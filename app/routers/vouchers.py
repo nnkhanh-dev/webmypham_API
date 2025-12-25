@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.database import SessionLocal
+from app.dependencies import get_db, get_pagination
 from app.schemas.voucher import VoucherCreate, VoucherUpdate, VoucherResponse
 from app.schemas.base import BaseResponse
 from app.services.voucher_service import (
@@ -16,45 +16,22 @@ from app.services.voucher_service import (
 
 router = APIRouter(prefix="/vouchers", tags=["vouchers"])
 
-# simple DB dependency
-def get_db():
-    db: Session = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 @router.get("/", response_model=BaseResponse[List[VoucherResponse]])
 def list_vouchers(
-    skip: int = 0,
-    limit: int = 100,
-    q: Optional[str] = None,
-    min_discount: Optional[float] = None,
-    max_discount: Optional[float] = None,
-    sort_by: str = "id",
-    sort_dir: str = "desc",
+    params: dict = Depends(get_pagination),
     db: Session = Depends(get_db),
 ):
     items, total = get_vouchers(
         db,
-        skip=skip,
-        limit=limit,
-        q=q,
-        min_discount=min_discount,
-        max_discount=max_discount,
-        sort_by=sort_by,
-        sort_dir=sort_dir,
+        skip=params.get("skip", 0),
+        limit=params.get("limit", 100),
+        q=params.get("q"),
+        min_discount=params.get("min_discount"),
+        max_discount=params.get("max_discount"),
+        sort_by=params.get("sort_by", "id"),
+        sort_dir=params.get("sort_dir", "desc"),
     )
-    meta = {
-        "skip": skip,
-        "limit": limit,
-        "total": total,
-        "sort_by": sort_by,
-        "sort_dir": sort_dir,
-        "q": q,
-        "min_discount": min_discount,
-        "max_discount": max_discount,
-    }
+    meta = {**params, "total": total}
     return BaseResponse(success=True, message="OK", data=items, meta=meta)
 
 @router.get("/{voucher_id}", response_model=BaseResponse[VoucherResponse])
