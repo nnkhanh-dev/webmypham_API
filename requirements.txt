@@ -5,3 +5,9 @@ pymysql
 alembic
 python-dotenv
 pydantic 
+python-jose[cryptography]
+passlib[argon2]
+email-validator
+python-multipart
+argon2-cffi
+python-multipart

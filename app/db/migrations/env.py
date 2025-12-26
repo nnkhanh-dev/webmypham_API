@@ -12,6 +12,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 # import Base and DATABASE_URL from your project and import models so metadata is populated
 from app.db.database import Base, DATABASE_URL
 import app.models.voucher  # registers Voucher with Base.metadata
+import app.models.user     # registers User with Base.metadata
+import app.models.role     # registers Role with Base.metadata
+import app.models.userRole # registers UserRole with Base.metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

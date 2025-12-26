@@ -1,12 +1,23 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Optional
 from datetime import datetime
+import re
+
 
 class VoucherBase(BaseModel):
+    # code normalized to upper-case alnum/_- between 3 and 50 chars
     code: str = Field(..., max_length=50)
-    discount: float = Field(..., ge=0)
+    # discount as fraction (0.0 - 1.0)
+    discount: float = Field(..., ge=0, le=1)
     description: Optional[str] = Field(None, max_length=255)
-    quantity: int = Field(1, ge=0)
+    quantity: int = Field(1, ge=1)
+
+    @validator("code")
+    def normalize_code(cls, v: str) -> str:
+        v2 = v.strip()
+        if not re.match(r"^[A-Za-z0-9_-]{3,50}$", v2):
+            raise ValueError("code must be 3-50 characters, letters/numbers/_/- only")
+        return v2.upper()
 
 class VoucherCreate(VoucherBase):
     pass

@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.dependencies import get_db, get_pagination
+from app.dependencies import get_db, get_pagination, require_roles
 from app.schemas.voucher import VoucherCreate, VoucherUpdate, VoucherResponse
 from app.schemas.base import BaseResponse
 from app.services.voucher_service import (
@@ -42,21 +42,21 @@ def read_voucher(voucher_id: int, db: Session = Depends(get_db)):
     return BaseResponse(success=True, message="OK", data=obj)
 
 @router.post("/", response_model=BaseResponse[VoucherResponse], status_code=status.HTTP_201_CREATED)
-def create_voucher_endpoint(voucher_in: VoucherCreate, db: Session = Depends(get_db)):
+def create_voucher_endpoint(voucher_in: VoucherCreate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
     if get_voucher_by_code(db, voucher_in.code):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Voucher code already exists")
     obj = create_voucher(db, voucher_in)
     return BaseResponse(success=True, message="Created", data=obj)
 
 @router.put("/{voucher_id}", response_model=BaseResponse[VoucherResponse])
-def update_voucher_endpoint(voucher_id: int, voucher_in: VoucherUpdate, db: Session = Depends(get_db)):
+def update_voucher_endpoint(voucher_id: int, voucher_in: VoucherUpdate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
     obj = update_voucher(db, voucher_id, voucher_in)
     if not obj:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voucher not found")
     return BaseResponse(success=True, message="Updated", data=obj)
 
 @router.delete("/{voucher_id}", response_model=BaseResponse[None])
-def delete_voucher_endpoint(voucher_id: int, db: Session = Depends(get_db)):
+def delete_voucher_endpoint(voucher_id: int, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
     ok = soft_delete_voucher(db, voucher_id)
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voucher not found")
