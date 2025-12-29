@@ -8,6 +8,7 @@ from app.routers.v1.carts import router as carts_router
 from app.routers.v1.wishlists import router as wishlists_router
 from app.routers.v1.auth import router as auth_router
 from app.routers.v1.users import router as users_router
+from app.routers.v1.categories import router as categories_router
 
 app = FastAPI(
     title="WebMyPham API",
@@ -28,6 +29,7 @@ app.include_router(vouchers_router, prefix="/api/v1/vouchers", tags=["vouchers"]
 app.include_router(brands_router, prefix="/api/v1/brands", tags=["brands"])
 app.include_router(types_router, prefix="/api/v1/types", tags=["types"])
 app.include_router(type_values_router, prefix="/api/v1/types", tags=["type-values"])
+app.include_router(categories_router, prefix="/api/v1/categories", tags=["categories"])
 app.include_router(carts_router, prefix="/api/v1/carts", tags=["carts"])
 app.include_router(wishlists_router, prefix="/api/v1/wishlists", tags=["wishlists"])
 
