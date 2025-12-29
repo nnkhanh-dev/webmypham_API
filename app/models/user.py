@@ -6,7 +6,6 @@ from sqlalchemy.orm import relationship
 
 class User(AuditMixin, Base):
     __tablename__ = "users"
-    name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     phone_number = Column(String(20), unique=True, index=True, nullable=True)

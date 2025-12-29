@@ -1,10 +1,11 @@
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
 class UserResponse(BaseModel):
-    id: int
+    id: UUID
     email: EmailStr
     first_name: Optional[str] = None
     last_name: Optional[str] = None
