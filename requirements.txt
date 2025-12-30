@@ -10,3 +10,4 @@ passlib[argon2]==1.7.4
 python-multipart==0.0.20
 argon2-cffi==23.1.0
 pydantic-settings==2.7.0
+python-slugify==8.0.1

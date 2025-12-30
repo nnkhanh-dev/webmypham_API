@@ -41,29 +41,29 @@ def list_brands(
 def read_brand(brand_id: str, db: Session = Depends(get_db), current_user = Depends(require_roles("CLIENT", "ADMIN"))):
     obj = get_brand(db, brand_id)
     if not obj:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brand not found")
-    return BaseResponse(success=True, message="OK", data=obj)
+        return BaseResponse(success=False, message="Không tìm thấy thương hiệu.", data=None)
+    return BaseResponse(success=True, message="Lấy thương hiệu thành công.", data=obj)
 
 
 @router.post("/", response_model=BaseResponse[BrandResponse], status_code=status.HTTP_201_CREATED)
 def create_brand_endpoint(brand_in: BrandCreate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
     if get_brand_by_name(db, brand_in.name):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Brand name already exists")
+        return BaseResponse(success=False, message="Tên thương hiệu đã tồn tại.", data=None)
     obj = create_brand(db, brand_in, created_by=str(current_user.id) if current_user else None)
-    return BaseResponse(success=True, message="Created", data=obj)
+    return BaseResponse(success=True, message="Thương hiệu đã được tạo.", data=obj)
 
 
 @router.put("/{brand_id}", response_model=BaseResponse[BrandResponse])
 def update_brand_endpoint(brand_id: str, brand_in: BrandUpdate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
     obj = update_brand(db, brand_id, brand_in, updated_by=str(current_user.id) if current_user else None)
     if not obj:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brand not found")
-    return BaseResponse(success=True, message="Updated", data=obj)
+        return BaseResponse(success=False, message="Không tìm thấy thương hiệu.", data=None)
+    return BaseResponse(success=True, message="Thương hiệu đã được cập nhật.", data=obj)
 
 
 @router.delete("/{brand_id}", response_model=BaseResponse[None])
 def delete_brand_endpoint(brand_id: str, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
     ok = soft_delete_brand(db, brand_id, deleted_by=str(current_user.id) if current_user else None)
     if not ok:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brand not found")
-    return BaseResponse(success=True, message="Deleted", data=None)
+        return BaseResponse(success=False, message="Không tìm thấy thương hiệu.", data=None)
+    return BaseResponse(success=True, message="Thương hiệu đã được xóa.", data=None)

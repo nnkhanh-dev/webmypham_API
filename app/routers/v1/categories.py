@@ -37,33 +37,33 @@ def list_categories(params: dict = Depends(get_pagination), db: Session = Depend
 def read_category(category_id: str, db: Session = Depends(get_db)):
     obj = get_category(db, category_id)
     if not obj:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
-    return BaseResponse(success=True, message="OK", data=obj)
+        return BaseResponse(success=False, message="Không tìm thấy danh mục.", data=None)
+    return BaseResponse(success=True, message="Lấy danh mục thành công.", data=obj)
 
 
 @router.post("/", response_model=BaseResponse[CategoryResponse], status_code=status.HTTP_201_CREATED)
 def create_category_endpoint(category_in: CategoryCreate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
     obj = create_category(db, category_in, created_by=str(current_user.id) if current_user else None)
-    return BaseResponse(success=True, message="Created", data=obj)
+    return BaseResponse(success=True, message="Danh mục đã được tạo.", data=obj)
 
 
 @router.put("/{category_id}", response_model=BaseResponse[CategoryResponse])
 def update_category_endpoint(category_id: str, category_in: CategoryUpdate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
     obj = update_category(db, category_id, category_in, updated_by=str(current_user.id) if current_user else None)
     if not obj:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
-    return BaseResponse(success=True, message="Updated", data=obj)
+        return BaseResponse(success=False, message="Không tìm thấy danh mục.", data=None)
+    return BaseResponse(success=True, message="Danh mục đã được cập nhật.", data=obj)
 
 
 @router.delete("/{category_id}", response_model=BaseResponse[None])
 def delete_category_endpoint(category_id: str, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
     ok = delete_category(db, category_id, deleted_by=str(current_user.id) if current_user else None)
     if not ok:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
-    return BaseResponse(success=True, message="Deleted", data=None)
+        return BaseResponse(success=False, message="Không tìm thấy danh mục.", data=None)
+    return BaseResponse(success=True, message="Danh mục đã được xóa.", data=None)
 
 
 @router.get("/{category_id}/children", response_model=BaseResponse[List[CategoryResponse]])
 def list_children(category_id: str, db: Session = Depends(get_db)):
     items = get_category_children(db, category_id)
-    return BaseResponse(success=True, message="OK", data=items)
+    return BaseResponse(success=True, message="Lấy danh sách danh mục con thành công.", data=items)

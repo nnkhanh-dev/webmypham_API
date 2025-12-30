@@ -6,6 +6,7 @@ from app.models.mixins import AuditMixin
 class Category(AuditMixin, Base):
     __tablename__ = "categories"
     name = Column(String(100))
+    slug = Column(String(100), unique=True, index=True)
     image_path = Column(String(255))
     description = Column(Text)
     parent_id = Column(String(36), ForeignKey("categories.id"), nullable=True)
