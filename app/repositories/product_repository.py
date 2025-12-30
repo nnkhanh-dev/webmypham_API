@@ -1,44 +1,54 @@
-from sqlalchemy.orm import Session, joinedload
-from app.models.product import Product
-from app.repositories.base import BaseRepository
-from sqlalchemy import func, desc
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import List
 
-class ProductRepository(BaseRepository[Product]):
-    def __init__(self, db: Session):
-        super().__init__(Product, db)
+from app.dependencies.database import get_db
+from app.schemas.response.base import BaseResponse
+from app.schemas.response.product import ProductDetailResponse, ProductTypeResponse
+from app.services.product_service import ProductService
 
-    def get_detail(self, id: str):
-        return self.db.query(Product)\
-            .options(
-                joinedload(Product.brand),
-                joinedload(Product.category),
-                joinedload(Product.product_types)
-            )\
-            .filter(Product.id == id, Product.deleted_at.is_(None))\
-            .first()
+router = APIRouter()
 
-    def get_best_selling(self, limit: int = 10):
-        from app.models.orderDetail import OrderDetail
-        # Đếm tổng quantity đã bán group by product
-        return self.db.query(
-                Product,
-                func.sum(OrderDetail.quantity).label("total_sold")
-            )\
-            .join(OrderDetail, OrderDetail.product_id == Product.id)\
-            .group_by(Product.id)\
-            .order_by(desc("total_sold"))\
-            .limit(limit)\
-            .all()
+@router.get("/{product_id}", response_model=BaseResponse[ProductDetailResponse])
+def get_product_detail(product_id: str, db: Session = Depends(get_db)):
+    service = ProductService(db)
+    product = service.get_detail(product_id)
+    if not product:
+        return BaseResponse(success=False, message="Không tìm thấy sản phẩm.", data=None)
+    return BaseResponse(success=True, data=product)
 
-    def get_most_favorite(self, limit: int = 10):
-        from app.models.review import Review
-        # Lấy sản phẩm có rating trung bình cao nhất
-        return self.db.query(
-                Product,
-                func.avg(Review.rating).label("avg_rating")
-            )\
-            .join(Review, Review.product_id == Product.id)\
-            .group_by(Product.id)\
-            .order_by(desc("avg_rating"))\
-            .limit(limit)\
-            .all()
+@router.get("/brand/{brand_id}", response_model=BaseResponse[List[ProductDetailResponse]])
+def get_products_by_brand(
+    brand_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    skip: int = 0,
+    db: Session = Depends(get_db)
+):
+    service = ProductService(db)
+    products = service.get_by_brand(brand_id, limit=limit, skip=skip)
+    return BaseResponse(success=True, data=products)
+
+@router.get("/category/{category_id}", response_model=BaseResponse[List[ProductDetailResponse]])
+def get_products_by_category(
+    category_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    skip: int = 0,
+    db: Session = Depends(get_db)
+):
+    service = ProductService(db)
+    products = service.get_by_category(category_id, limit=limit, skip=skip)
+    return BaseResponse(success=True, data=products)
+
+@router.get("/best-selling", response_model=BaseResponse[List[ProductDetailResponse]])
+def get_best_selling_products(limit: int = 10, db: Session = Depends(get_db)):
+    service = ProductService(db)
+    result = service.get_best_selling(limit)
+    products = [prod for prod, _ in result]
+    return BaseResponse(success=True, data=products)
+
+@router.get("/most-favorite", response_model=BaseResponse[List[ProductDetailResponse]])
+def get_most_favorite_products(limit: int = 10, db: Session = Depends(get_db)):
+    service = ProductService(db)
+    result = service.get_most_favorite(limit)
+    products = [prod for prod, _ in result]
+    return BaseResponse(success=True, data=products)
