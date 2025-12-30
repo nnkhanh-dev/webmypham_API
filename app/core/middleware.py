@@ -25,7 +25,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 if user_id:
                     db = SessionLocal()
                     try:
-                        user = db.query(User).filter(User.id == int(user_id)).first()
+                        # User.id is a UUID string (see AuditMixin). Ensure we compare as str.
+                        user = db.query(User).filter(User.id == str(user_id)).first()
                         if user:
                             # load roles while session is open and build a lightweight detached user
                             roles_loaded = [SimpleNamespace(name=r.name) for r in getattr(user, "roles", [])]

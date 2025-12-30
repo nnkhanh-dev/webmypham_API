@@ -40,25 +40,10 @@ def get_my_cart(db: Session = Depends(get_db), current_user = Depends(get_curren
     return BaseResponse(success=True, message="OK", data=obj)
 
 
-@router.get("/{cart_id}", response_model=BaseResponse[CartResponse])
-def read_cart(cart_id: str, db: Session = Depends(get_db)):
-    obj = get_cart(db, cart_id)
-    if not obj:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found")
-    return BaseResponse(success=True, message="OK", data=obj)
-
-
 @router.post("/{cart_id}/items", response_model=BaseResponse[CartItemResponse], status_code=status.HTTP_201_CREATED)
 def add_item(cart_id: str, item_in: CartItemCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     obj = add_cart_item(db, cart_id, item_in, created_by=str(current_user.id))
     return BaseResponse(success=True, message="Created", data=obj)
-
-
-@router.get("/{cart_id}/items", response_model=BaseResponse[List[CartItemResponse]])
-def list_items(cart_id: str, db: Session = Depends(get_db)):
-    items, total = list_cart_items(db, cart_id)
-    meta = {"total": total}
-    return BaseResponse(success=True, message="OK", data=items, meta=meta)
 
 
 @router.put("/{cart_id}/items/{item_id}", response_model=BaseResponse[CartItemResponse])

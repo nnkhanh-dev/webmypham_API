@@ -16,6 +16,14 @@ class CartRepository(BaseRepository[Cart]):
         ).first()
 
 
+    def get_by_id_and_user(self, cart_id: str, user_id: str) -> Optional[Cart]:
+        return self.db.query(Cart).filter(
+            Cart.id == cart_id,
+            Cart.user_id == user_id,
+            Cart.deleted_at.is_(None),
+        ).first()
+
+
 class CartItemRepository(BaseRepository[CartItem]):
     def __init__(self, db: Session):
         super().__init__(CartItem, db)
@@ -28,3 +36,10 @@ class CartItemRepository(BaseRepository[CartItem]):
         total = query.count()
         items = query.offset(skip).limit(limit).all()
         return items, total
+
+    def get_by_cart_and_product(self, cart_id: str, product_type_id: str) -> Optional[CartItem]:
+        return self.db.query(CartItem).filter(
+            CartItem.cart_id == cart_id,
+            CartItem.product_type_id == product_type_id,
+            CartItem.deleted_at.is_(None),
+        ).first()
