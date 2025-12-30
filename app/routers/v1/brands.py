@@ -38,7 +38,7 @@ def list_brands(
 
 
 @router.get("/{brand_id}", response_model=BaseResponse[BrandResponse])
-def read_brand(brand_id: str, db: Session = Depends(get_db), current_user = Depends(require_roles("CLIENT", "ADMIN"))):
+def read_brand(brand_id: str, db: Session = Depends(get_db)):
     obj = get_brand(db, brand_id)
     if not obj:
         return BaseResponse(success=False, message="Không tìm thấy thương hiệu.", data=None)

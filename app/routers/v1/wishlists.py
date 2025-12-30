@@ -36,7 +36,7 @@ def create_wishlist(db: Session = Depends(get_db), current_user = Depends(get_cu
 def get_my_wishlist(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     obj = get_wishlist_by_user(db, str(current_user.id))
     if not obj:
-        return BaseResponse(success=False, message=f"Không tìm thấy danh sách yêu thích.", data=None)
+        return BaseResponse(success=False, message="Không tìm thấy danh sách yêu thích.", data=None)
     return BaseResponse(success=True, message="Lấy danh sách yêu thích thành công.", data=obj)
 
 
@@ -47,14 +47,14 @@ def add_item(wishlist_id: str, item_in: WishlistItemCreate, db: Session = Depend
         repo = WishlistRepository(db)
         wishlist = repo.get(wishlist_id)
         if not wishlist:
-            return BaseResponse(success=False, message=f"Không tìm thấy danh sách yêu thích.", data=None)
+            return BaseResponse(success=False, message="Không tìm thấy danh sách yêu thích.", data=None)
         if str(wishlist.user_id) != str(current_user.id):
             return BaseResponse(success=False, message="Bạn không có quyền truy cập vào danh sách này.", data=None)
         # validate product exists for clearer message
         from app.models.productType import ProductType
         pt = db.query(ProductType).filter(ProductType.id == item_in.product_type_id, ProductType.deleted_at.is_(None)).first()
         if not pt:
-            return BaseResponse(success=False, message=f"Không tìm thấy sản phẩm.", data=None)
+            return BaseResponse(success=False, message="Không tìm thấy sản phẩm.", data=None)
 
         obj = add_wishlist_item(db, wishlist_id, item_in, created_by=str(current_user.id))
         return BaseResponse(success=True, message="Sản phẩm đã được thêm vào danh sách yêu thích.", data=obj)
@@ -62,11 +62,11 @@ def add_item(wishlist_id: str, item_in: WishlistItemCreate, db: Session = Depend
         code = getattr(e, "status_code", None)
         detail = getattr(e, "detail", "")
         if code == status.HTTP_404_NOT_FOUND:
-            return BaseResponse(success=False, message=f"Không tìm thấy sản phẩm: {detail}.", data=None)
+            return BaseResponse(success=False, message="Không tìm thấy sản phẩm: {detail}.", data=None)
         elif code == status.HTTP_400_BAD_REQUEST:
-            return BaseResponse(success=False, message=f"Yêu cầu không hợp lệ: {detail}.", data=None)
+            return BaseResponse(success=False, message="Yêu cầu không hợp lệ: {detail}.", data=None)
         else:
-            return BaseResponse(success=False, message=f"Đã xảy ra lỗi: {detail}.", data=None)
+            return BaseResponse(success=False, message="Đã xảy ra lỗi: {detail}.", data=None)
     except Exception:
         return BaseResponse(success=False, message="Đã xảy ra lỗi.", data=None)
 
@@ -82,8 +82,8 @@ def list_items(wishlist_id: str, db: Session = Depends(get_db)):
 def delete_item(wishlist_id: str, item_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     obj = get_wishlist_item(db, item_id)
     if not obj or obj.wishlist_id != wishlist_id:
-        return BaseResponse(success=False, message=f"Không tìm thấy sản phẩm trong danh sách yêu thích.", data=None)
+        return BaseResponse(success=False, message="Không tìm thấy sản phẩm trong danh sách yêu thích.", data=None)
     ok = remove_wishlist_item(db, item_id, deleted_by=str(current_user.id))
     if not ok:
-        return BaseResponse(success=False, message=f"Không tìm thấy sản phẩm trong danh sách yêu thích.", data=None)
+        return BaseResponse(success=False, message="Không tìm thấy sản phẩm trong danh sách yêu thích.", data=None)
     return BaseResponse(success=True, message="Sản phẩm trong danh sách yêu thích đã được xóa.", data=None) 

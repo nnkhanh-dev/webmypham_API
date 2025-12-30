@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 from app.models.category import Category
 from app.repositories.category_repository import CategoryRepository
-from app.schemas.category import CategoryCreate, CategoryUpdate
+from app.schemas.request.category import CategoryCreate, CategoryUpdate
 from slugify import slugify
 
 
@@ -19,6 +19,15 @@ def get_categories(db: Session, skip: int = 0, limit: int = 100, q: Optional[str
 def create_category(db: Session, category_in: CategoryCreate, created_by: Optional[str] = None) -> Category:
     repo = CategoryRepository(db)
     data = category_in.dict()
+    # normalize empty parent_id to None (client may send empty string)
+    parent_id = data.get("parent_id")
+    if parent_id == "" or parent_id is None:
+        data["parent_id"] = None
+    else:
+        # verify parent exists
+        parent = repo.get(parent_id)
+        if not parent:
+            raise ValueError("Danh mục cha không tồn tại.")
     # generate slug from name
     name = data.get("name", "")
     slug_base = _slugify(name)
@@ -45,6 +54,46 @@ def delete_category(db: Session, category_id: str, deleted_by: Optional[str] = N
 def get_category_children(db: Session, category_id: str) -> List[Category]:
     repo = CategoryRepository(db)
     return repo.list_children(category_id)
+
+
+def get_category_tree(db: Session, max_depth: int = 3) -> List[dict]:
+    """Return list of categories (top-level) each containing nested `children` up to `max_depth` levels.
+
+    The returned structure is a list of dicts suitable for Pydantic parsing by `CategoryResponse`.
+    """
+    repo = CategoryRepository(db)
+
+    def to_dict(cat):
+        return {
+            "id": cat.id,
+            "name": cat.name,
+            "slug": getattr(cat, "slug", None),
+            "image_path": getattr(cat, "image_path", None),
+            "description": getattr(cat, "description", None),
+            "parent_id": getattr(cat, "parent_id", None),
+            "created_by": getattr(cat, "created_by", None),
+            "updated_by": getattr(cat, "updated_by", None),
+            "deleted_by": getattr(cat, "deleted_by", None),
+            "created_at": getattr(cat, "created_at", None),
+            "updated_at": getattr(cat, "updated_at", None),
+            "deleted_at": getattr(cat, "deleted_at", None),
+            "children": None,
+        }
+
+    def build(node, depth):
+        if depth >= max_depth:
+            return node
+        children = repo.list_children(node["id"])
+        if not children:
+            node["children"] = []
+            return node
+        node["children"] = [build(to_dict(c), depth + 1) for c in children]
+        return node
+
+    # top-level categories (parent_id is None)
+    tops = db.query(Category).filter(Category.parent_id.is_(None), Category.deleted_at.is_(None)).all()
+    tree = [build(to_dict(c), 1) for c in tops]
+    return tree
 
 
 def _slugify(value: str) -> str:

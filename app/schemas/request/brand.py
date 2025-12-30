@@ -20,10 +20,11 @@ class BrandUpdate(BaseModel):
 
 
 class BrandInDBBase(BrandBase):
-    id: int
-    created_by: Optional[int] = None
-    updated_by: Optional[int] = None
-    deleted_by: Optional[int] = None
+    id: str
+    slug: Optional[str] = None
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
+    deleted_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     deleted_at: Optional[datetime] = None

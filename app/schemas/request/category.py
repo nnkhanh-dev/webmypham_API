@@ -23,6 +23,7 @@ class CategoryUpdate(BaseModel):
 
 class CategoryInDBBase(CategoryBase):
     id: str
+    slug: Optional[str] = None
     created_by: Optional[str] = None
     updated_by: Optional[str] = None
     deleted_by: Optional[str] = None
@@ -36,3 +37,6 @@ class CategoryInDBBase(CategoryBase):
 
 class CategoryResponse(CategoryInDBBase):
     children: Optional[List["CategoryResponse"]] = None
+
+
+CategoryResponse.update_forward_refs()
