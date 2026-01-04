@@ -25,7 +25,7 @@ from app.services.cart_service import (
 from app.models.productType import ProductType
 from app.models.cartItem import CartItem
 
-router = APIRouter(prefix="/carts", tags=["carts"])
+router = APIRouter()
 
 
 @router.post("/", response_model=BaseResponse[CartResponse], status_code=status.HTTP_201_CREATED)

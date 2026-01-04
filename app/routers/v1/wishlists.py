@@ -20,7 +20,7 @@ from app.services.wishlist_service import (
 )
 from app.repositories.wishlist_repository import WishlistRepository
 
-router = APIRouter(prefix="/wishlists", tags=["wishlists"])
+router = APIRouter()
 
 
 @router.post("/", response_model=BaseResponse[WishlistResponse], status_code=status.HTTP_201_CREATED)

@@ -12,6 +12,7 @@ class User(AuditMixin, Base):
     first_name = Column(String(50), nullable=True)
     last_name = Column(String(50), nullable=True)
     dob = Column(DateTime, nullable=True)
+    gender = Column(Integer, nullable=True)
     access_token = Column(Text, nullable=True)
     refresh_token = Column(Text, nullable=True)
     reset_password_token = Column(Text, nullable=True)

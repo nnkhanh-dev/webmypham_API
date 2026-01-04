@@ -16,7 +16,7 @@ from app.services.voucher_service import (
     soft_delete_voucher,
 )
 
-router = APIRouter(prefix="/vouchers", tags=["vouchers"])
+router = APIRouter()
 
 @router.get("/", response_model=BaseResponse[List[VoucherResponse]])
 def list_vouchers(

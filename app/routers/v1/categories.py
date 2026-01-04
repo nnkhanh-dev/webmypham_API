@@ -17,7 +17,7 @@ from app.services.category_service import (
     get_category_tree,
 )
 
-router = APIRouter(prefix="/categories", tags=["categories"])
+router = APIRouter()
 
 
 @router.get("/", response_model=BaseResponse[List[CategoryResponse]])

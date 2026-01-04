@@ -19,7 +19,7 @@ from app.services.type_service import (
     delete_type,
 )
 
-router = APIRouter(prefix="/types", tags=["types"])
+router = APIRouter()
 
 
 @router.get("/", response_model=BaseResponse[List[TypeResponse]])

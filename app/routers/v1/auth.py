@@ -10,7 +10,7 @@ from app.services.auth_service import create_user, authenticate_user
 from app.core.security import create_access_token
 from app.core.config import settings
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter()
 
 
 @router.post("/register", response_model=BaseResponse[UserResponse], status_code=status.HTTP_201_CREATED)
