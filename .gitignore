@@ -49,3 +49,7 @@ dist/
 Thumbs.db
 
 scripts/
+
+# Data files (địa giới hành chính VN)
+data/*.json
+!data/.gitkeep

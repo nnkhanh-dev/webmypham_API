@@ -5,6 +5,8 @@ from app.models.mixins import AuditMixin
 
 class Address(AuditMixin, Base):
     __tablename__ = "addresses"
+    full_name = Column(String(100))
+    phone_number = Column(String(20))
     province = Column(String(100))
     district = Column(String(100))
     ward = Column(String(100))
