@@ -36,7 +36,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
                                 first_name=user.first_name,
                                 last_name=user.last_name,
                                 phone_number=user.phone_number,
+                                dob=user.dob,
+                                gender=user.gender,
                                 roles=roles_loaded,
+                                created_at=user.created_at,
                             )
                             request.state.user = detached_user
                     finally:
