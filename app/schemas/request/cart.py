@@ -14,6 +14,7 @@ class CartItemCreate(CartItemBase):
 
 class CartItemUpdate(BaseModel):
     quantity: Optional[int] = Field(None, ge=0)
+    product_type_id: Optional[str] = Field(None, description="ID của biến thể sản phẩm mới (thay đổi màu sắc, dung tích...)")
 
 
 class CartItemInDBBase(CartItemBase):

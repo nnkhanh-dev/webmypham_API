@@ -1,7 +1,8 @@
 from typing import Optional, List, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.cart import Cart
 from app.models.cartItem import CartItem
+from app.models.productType import ProductType
 from app.repositories.base import BaseRepository
 
 
@@ -10,7 +11,15 @@ class CartRepository(BaseRepository[Cart]):
         super().__init__(Cart, db)
 
     def get_by_user(self, user_id: str) -> Optional[Cart]:
-        return self.db.query(Cart).filter(
+        """Lấy giỏ hàng với đầy đủ thông tin sản phẩm"""
+        return self.db.query(Cart).options(
+            joinedload(Cart.items)
+            .joinedload(CartItem.product_type)
+            .joinedload(ProductType.product),  # Load thông tin sản phẩm
+            joinedload(Cart.items)
+            .joinedload(CartItem.product_type)
+            .joinedload(ProductType.type_value),  # Load tên biến thể (màu, dung tích)
+        ).filter(
             Cart.user_id == user_id,
             Cart.deleted_at.is_(None),
         ).first()

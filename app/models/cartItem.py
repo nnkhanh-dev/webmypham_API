@@ -10,4 +10,5 @@ class CartItem(AuditMixin, Base):
     product_type_id = Column(String(36), ForeignKey("product_types.id"))
     quantity = Column(Integer)
     cart = relationship("Cart", back_populates="items")
+    product_type = relationship("ProductType")  # Thêm relationship để load thông tin sản phẩm
 
