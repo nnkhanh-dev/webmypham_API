@@ -9,8 +9,9 @@ def require_roles(*roles: str):
                 detail="Not authenticated",
             )
 
-        user_role_names = [r.name for r in getattr(user, "roles", [])]
-        if not any(role in user_role_names for role in roles):
+        user_role_names = [r.name.lower() for r in getattr(user, "roles", [])]
+        required_roles_lower = [role.lower() for role in roles]
+        if not any(role in user_role_names for role in required_roles_lower):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Forbidden",

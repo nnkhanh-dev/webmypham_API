@@ -20,7 +20,7 @@ env/
 # IDE / editors
 .vscode/
 .idea/
-*.sublime-project
+*.sublime-projectk
 *.sublime-workspace
 
 # Unit test / coverage
