@@ -5,12 +5,12 @@ from app.schemas.request.product import ProductCreateRequest, ProductUpdateReque
 # from sqlalchemy.orm import Session
 # from app.repositories.product_repository import ProductRepository
 
-# class ProductService:
-#     def __init__(self, db: Session):
-#         self.repo = ProductRepository(db)
+class ProductService:
+    def __init__(self, db: Session):
+        self.repo = ProductRepository(db)
 
-#     def get_detail(self, id: str):
-#         return self.repo.get_detail(id)
+    def get_detail(self, id: str):
+        return self.repo.get_detail(id)
 
     def get_all(self, skip: int = 0, limit: int = 20):
         """Lấy danh sách tất cả sản phẩm với phân trang"""
