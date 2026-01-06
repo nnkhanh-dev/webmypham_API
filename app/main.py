@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from app.core.middleware import AuthMiddleware,TraceIdMiddleware
 from app.routers.v1.vouchers import router as vouchers_router
@@ -12,6 +13,7 @@ from app.routers.v1.users import router as users_router
 from app.routers.v1.categories import router as categories_router
 from app.routers.v1.review import router as reviews_router
 from app.routers.v1.product import router as product_router
+from app.routers.v1.chat import router as chat_router
 
 app = FastAPI(
     title="WebMyPham API",
@@ -21,6 +23,13 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def custom_openapi():
     if app.openapi_schema:
@@ -43,8 +52,8 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 # middleware
-app.add_middleware(TraceIdMiddleware) 
-app.add_middleware(AuthMiddleware)
+# app.add_middleware(TraceIdMiddleware) 
+# app.add_middleware(AuthMiddleware)
 
 # routers
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
@@ -58,6 +67,7 @@ app.include_router(carts_router, prefix="/api/v1/carts", tags=["carts"])
 app.include_router(wishlists_router, prefix="/api/v1/wishlists", tags=["wishlists"])
 app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
 app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
+# app.include_router(chat_router, prefix="/api/v1", tags=["chat"])
 
 @app.get("/")
 def health_check():

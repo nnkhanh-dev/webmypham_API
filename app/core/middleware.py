@@ -12,23 +12,29 @@ logger = logging.getLogger("app")
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # --- THÊM LOGIC NÀY ĐỂ KHÔNG CHẶN WEBSOCKET ---
+        # Kiểm tra nếu là kết nối WebSocket thì bỏ qua middleware này
+        if request.scope["type"] == "websocket" or request.url.path.startswith("/ws"):
+            return await call_next(request)
+        # ----------------------------------------------
+
+        # GIỮ NGUYÊN TOÀN BỘ LOGIC CŨ CỦA BẠN DƯỚI ĐÂY
         auth = request.headers.get("Authorization")
         request.state.user = None
         request.state.token_payload = None
+        
         if auth and auth.startswith("Bearer "):
             token = auth.split(" ")[1]
             payload = decode_access_token(token)
-            # attach raw token payload (contains user info) to request.state
             request.state.token_payload = payload
+            
             if payload:
                 user_id = payload.get("sub")
                 if user_id:
                     db = SessionLocal()
                     try:
-                        # User.id is a UUID string (see AuditMixin). Ensure we compare as str.
                         user = db.query(User).filter(User.id == str(user_id)).first()
                         if user:
-                            # load roles while session is open and build a lightweight detached user
                             roles_loaded = [SimpleNamespace(name=r.name) for r in getattr(user, "roles", [])]
                             detached_user = SimpleNamespace(
                                 id=user.id,
@@ -43,7 +49,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
                         db.close()
 
         return await call_next(request)
-    
 class TraceIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         trace_id = request.headers.get("X-Trace-Id", str(uuid.uuid4()))
