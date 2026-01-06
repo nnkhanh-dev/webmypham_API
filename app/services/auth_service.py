@@ -52,10 +52,12 @@ def create_user(db: Session, user_in: UserCreate, role_name: str = "CLIENT", cre
 
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
-    """Xác thực user với email và password"""
     user = get_user_by_email(db, email)
     if not user:
+        print(f"DEBUG: Không tìm thấy email {email}")
         return None
-    if not verify_password(password, getattr(user, "password_hash", "")):
+    is_valid = verify_password(password, getattr(user, "password_hash", ""))
+    if not is_valid:
+        print(f"DEBUG: Mật khẩu không khớp cho email {email}")
         return None
     return user
