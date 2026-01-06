@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware import AuthMiddleware,TraceIdMiddleware
@@ -54,6 +55,21 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+# CORS middleware - cho phép Frontend gọi API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",      # Vite dev server
+        "http://localhost:3000",      # Alternative dev server
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        # "https://your-frontend-domain.com",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # middleware
 app.add_middleware(TraceIdMiddleware) 
