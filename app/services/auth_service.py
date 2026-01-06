@@ -62,7 +62,6 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
     user_repo = UserRepository(db)
     return user_repo.get_by_email(email)
 
-
 def verify_password(plain: str, hashed: str) -> bool:
     try:
         return pwd_context.verify(plain, hashed)
@@ -91,7 +90,6 @@ def create_user(
     role = role_repo.get_or_create(role_name, created_by=created_by)
     user = user_repo.assign_role(user, role.name)
     return user
-
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     user = get_user_by_email(db, email)
