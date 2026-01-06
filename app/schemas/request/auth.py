@@ -54,3 +54,6 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     dob: Optional[datetime] = None
     gender: Optional[int] = None
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

@@ -18,7 +18,12 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: str     
+    token_type: str = "bearer"
     scope: Optional[str] = ""
-    expires_at: Optional[str]
     expires_in: int
+    refresh_expires_in: int 
+    
+    email: EmailStr
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
