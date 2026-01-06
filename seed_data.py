@@ -14,7 +14,8 @@ from app.models.role import Role
 from app.models.userRole import UserRole
 
 # Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Use argon2 to match the application's auth_service.py configuration
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:

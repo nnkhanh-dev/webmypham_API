@@ -20,7 +20,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     return BaseResponse(success=True, message="Created", data=user)
 
 
-@router.post("/token", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse)
 def login(form_data: LoginRequest, db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.email, form_data.password)
     if not user:
