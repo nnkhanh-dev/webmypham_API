@@ -20,8 +20,11 @@ from app.services.category_service import (
 router = APIRouter()
 
 
+# ==================== GET (Public) ====================
+
 @router.get("/", response_model=BaseResponse[List[CategoryResponse]])
-def list_categories(params: dict = Depends(get_pagination), db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
+def list_categories(params: dict = Depends(get_pagination), db: Session = Depends(get_db)):
+    """Lấy danh sách danh mục (Public)"""
     items, total = get_categories(
         db,
         skip=params.get("skip", 0),
@@ -36,20 +39,36 @@ def list_categories(params: dict = Depends(get_pagination), db: Session = Depend
 
 @router.get("/tree", response_model=BaseResponse[List[CategoryResponse]])
 def category_tree(db: Session = Depends(get_db)):
+    """Lấy cây danh mục (Public)"""
     items = get_category_tree(db, max_depth=3)
     return BaseResponse(success=True, message="Lấy cây danh mục thành công.", data=items)
 
 
 @router.get("/{category_id}", response_model=BaseResponse[CategoryResponse])
-def read_category(category_id: str, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
+def read_category(category_id: str, db: Session = Depends(get_db)):
+    """Lấy chi tiết danh mục (Public)"""
     obj = get_category(db, category_id)
     if not obj:
         return BaseResponse(success=False, message="Không tìm thấy danh mục.", data=None)
     return BaseResponse(success=True, message="Lấy danh mục thành công.", data=obj)
 
 
+# @router.get("/{category_id}/children", response_model=BaseResponse[List[CategoryResponse]])
+# def list_children(category_id: str, db: Session = Depends(get_db)):
+#     """Lấy danh sách danh mục con (Public)"""
+#     items = get_category_children(db, category_id)
+#     return BaseResponse(success=True, message="Lấy danh sách danh mục con thành công.", data=items)
+
+
+# ==================== POST/PUT/DELETE (Admin only) ====================
+
 @router.post("/", response_model=BaseResponse[CategoryResponse], status_code=status.HTTP_201_CREATED)
-def create_category_endpoint(category_in: CategoryCreate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
+def create_category_endpoint(
+    category_in: CategoryCreate, 
+    db: Session = Depends(get_db), 
+    current_user = Depends(require_roles("admin"))
+):
+    """Tạo danh mục mới (Admin only)"""
     try:
         obj = create_category(db, category_in, created_by=str(current_user.id) if current_user else None)
     except ValueError as e:
@@ -58,7 +77,13 @@ def create_category_endpoint(category_in: CategoryCreate, db: Session = Depends(
 
 
 @router.put("/{category_id}", response_model=BaseResponse[CategoryResponse])
-def update_category_endpoint(category_id: str, category_in: CategoryUpdate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
+def update_category_endpoint(
+    category_id: str, 
+    category_in: CategoryUpdate, 
+    db: Session = Depends(get_db), 
+    current_user = Depends(require_roles("admin"))
+):
+    """Cập nhật danh mục (Admin only)"""
     obj = update_category(db, category_id, category_in, updated_by=str(current_user.id) if current_user else None)
     if not obj:
         return BaseResponse(success=False, message="Không tìm thấy danh mục.", data=None)
@@ -66,14 +91,13 @@ def update_category_endpoint(category_id: str, category_in: CategoryUpdate, db: 
 
 
 @router.delete("/{category_id}", response_model=BaseResponse[None])
-def delete_category_endpoint(category_id: str, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
+def delete_category_endpoint(
+    category_id: str, 
+    db: Session = Depends(get_db), 
+    current_user = Depends(require_roles("admin"))
+):
+    """Xóa danh mục (Admin only)"""
     ok = delete_category(db, category_id, deleted_by=str(current_user.id) if current_user else None)
     if not ok:
         return BaseResponse(success=False, message="Không tìm thấy danh mục.", data=None)
     return BaseResponse(success=True, message="Danh mục đã được xóa.", data=None)
-
-
-@router.get("/{category_id}/children", response_model=BaseResponse[List[CategoryResponse]])
-def list_children(category_id: str, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN"))):
-    items = get_category_children(db, category_id)
-    return BaseResponse(success=True, message="Lấy danh sách danh mục con thành công.", data=items)
