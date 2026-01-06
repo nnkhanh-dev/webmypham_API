@@ -5,6 +5,8 @@ from app.models.product import Product
 from app.models.productType import ProductType  
 from app.models.review import Review
 from app.models.wishlist import Wishlist
+from app.models.order import Order
+from app.models.orderDetail import OrderDetail
 from app.repositories.base import BaseRepository
 
 
@@ -39,9 +41,27 @@ class ProductRepository(BaseRepository[Product]):
         ).offset(skip).limit(limit).all()
 
     def get_best_selling(self, limit: int = 10) -> List[Tuple[Product, int]]:
-        """Lấy top sản phẩm bán chạy nhất (dựa vào số lượng đã bán của product_types)"""
-        return self.db.query(Product, func.sum(ProductType.sold).label('total_sold')).join(
+        """Lấy top sản phẩm bán chạy nhất (tính từ order_details với đơn hoàn thành)"""
+        # Subquery: tính tổng số lượng bán của mỗi product_type
+        sold_subquery = self.db.query(
+            OrderDetail.product_type_id,
+            func.sum(OrderDetail.number).label('quantity_sold')
+        ).join(
+            Order, Order.id == OrderDetail.order_id
+        ).filter(
+            Order.status.in_(['completed', 'delivered', 'COMPLETED', 'DELIVERED']),  # Chỉ tính đơn hoàn thành
+            Order.deleted_at.is_(None),
+            OrderDetail.deleted_at.is_(None)
+        ).group_by(OrderDetail.product_type_id).subquery()
+
+        # Query chính: join product với subquery
+        return self.db.query(
+            Product,
+            func.coalesce(func.sum(sold_subquery.c.quantity_sold), 0).label('total_sold')
+        ).join(
             ProductType, Product.id == ProductType.product_id
+        ).outerjoin(
+            sold_subquery, ProductType.id == sold_subquery.c.product_type_id
         ).filter(
             Product.deleted_at.is_(None),
             Product.is_active == True
@@ -58,4 +78,32 @@ class ProductRepository(BaseRepository[Product]):
             Product.is_active == True
         ).group_by(Product.id).order_by(
             desc('favorite_count')
+        ).limit(limit).all()
+
+    def get_top_rated(self, limit: int = 10) -> List[Tuple[Product, float, int]]:
+        """Lấy top sản phẩm rating cao nhất (dựa vào trung bình rating từ reviews)"""
+        return self.db.query(
+            Product,
+            func.avg(Review.rating).label('avg_rating'),
+            func.count(Review.id).label('review_count')
+        ).join(
+            Review, Product.id == Review.product_id
+        ).filter(
+            Product.deleted_at.is_(None),
+            Product.is_active == True,
+            Review.deleted_at.is_(None)
+        ).group_by(Product.id).having(
+            func.count(Review.id) >= 1  # Chỉ lấy sản phẩm có ít nhất 1 review
+        ).order_by(
+            desc('avg_rating'),
+            desc('review_count')
+        ).limit(limit).all()
+
+    def get_new_arrivals(self, limit: int = 10) -> List[Product]:
+        """Lấy sản phẩm mới nhất"""
+        return self.db.query(Product).filter(
+            Product.deleted_at.is_(None),
+            Product.is_active == True
+        ).order_by(
+            desc(Product.created_at)
         ).limit(limit).all()
