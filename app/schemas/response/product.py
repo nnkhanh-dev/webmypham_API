@@ -84,3 +84,33 @@ class ProductVariantsListResponse(BaseModel):
     product_name: str
     product_thumbnail: Optional[str] = None
     variants: List[ProductVariantResponse] = []
+
+
+# --- Schemas cho Homepage Product List ---
+
+class ProductCardResponse(BaseModel):
+    """Thông tin sản phẩm hiển thị dạng card trên homepage"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    thumbnail: Optional[str] = None
+    description: Optional[str] = None
+    brand_name: Optional[str] = None
+    category_name: Optional[str] = None
+    # Price info (từ product_types)
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    min_discount_price: Optional[float] = None
+    # Rating info
+    avg_rating: Optional[float] = None
+    review_count: Optional[int] = 0
+    # Stats
+    total_sold: Optional[int] = 0
+    favorite_count: Optional[int] = 0
+
+
+class ProductListResponse(BaseModel):
+    """Response cho danh sách sản phẩm (homepage sections)"""
+    items: List[ProductCardResponse] = []
+    total: int = 0
