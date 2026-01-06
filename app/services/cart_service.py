@@ -59,17 +59,51 @@ def list_cart_items(db: Session, cart_id: str, skip: int = 0, limit: int = 100) 
 def update_cart_item(db: Session, item_id: str, item_in: CartItemUpdate, updated_by: Optional[str] = None) -> Optional[CartItem]:
     repo = CartItemRepository(db)
     data = item_in.dict(exclude_unset=True)
-    # if updating quantity, validate against product type stock
-    if "quantity" in data:
-        item = repo.get(item_id)
-        if not item:
-            return None
-        product_type = db.query(ProductType).filter(ProductType.id == item.product_type_id, ProductType.deleted_at.is_(None)).first()
+    
+    # Get existing cart item
+    item = repo.get(item_id)
+    if not item:
+        return None
+    
+    # If updating product_type_id (changing variant), validate new product type
+    if "product_type_id" in data and data["product_type_id"] != item.product_type_id:
+        new_product_type = db.query(ProductType).filter(
+            ProductType.id == data["product_type_id"], 
+            ProductType.deleted_at.is_(None)
+        ).first()
+        if not new_product_type:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="New product type not found")
+        
+        # Check if changing to an item that already exists in cart (merge or reject)
+        existing_same_type = repo.get_by_cart_and_product(item.cart_id, data["product_type_id"])
+        if existing_same_type and existing_same_type.id != item_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="Product variant already exists in cart. Please update quantity of existing item or remove it first."
+            )
+        
+        # Validate stock for new product type
+        new_qty = int(data.get("quantity", item.quantity))
+        if new_product_type.stock is not None and new_qty > new_product_type.stock:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=f"Insufficient stock for new variant: requested {new_qty}, available {new_product_type.stock}"
+            )
+    
+    # If only updating quantity (no product_type_id change), validate against current product type stock
+    elif "quantity" in data:
+        product_type = db.query(ProductType).filter(
+            ProductType.id == item.product_type_id, 
+            ProductType.deleted_at.is_(None)
+        ).first()
         if not product_type:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product type not found")
         new_qty = int(data["quantity"])
         if product_type.stock is not None and new_qty > product_type.stock:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient stock for requested quantity")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=f"Insufficient stock: requested {new_qty}, available {product_type.stock}"
+            )
 
     return repo.update(item_id, data, updated_by=updated_by)
 
