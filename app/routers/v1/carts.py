@@ -52,6 +52,37 @@ def get_my_cart(db: Session = Depends(get_db), current_user = Depends(get_curren
     return BaseResponse(success=True, message="Lấy giỏ hàng thành công.", data=obj)
 
 
+@router.post("/items", response_model=BaseResponse[CartItemResponse], status_code=status.HTTP_201_CREATED)
+def add_item_auto(item_in: CartItemCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """
+    Thêm sản phẩm vào giỏ hàng.
+    Tự động tìm hoặc tạo giỏ hàng cho user nếu chưa có.
+    Sử dụng endpoint này khi add từ trang home/product detail.
+    """
+    try:
+        # Tìm cart của user, nếu chưa có thì tạo mới
+        cart = get_cart_by_user(db, str(current_user.id))
+        if not cart:
+            cart = create_cart_for_user(db, str(current_user.id), created_by=str(current_user.id))
+        
+        cart_id = cart.id
+        
+        # validate product type and stock
+        pt = db.query(ProductType).filter(ProductType.id == item_in.product_type_id, ProductType.deleted_at.is_(None)).first()
+        if not pt:
+            return BaseResponse(success=False, message="Không tìm thấy sản phẩm.", data=None)
+        
+        existing = db.query(CartItem).filter(CartItem.cart_id == cart_id, CartItem.product_type_id == item_in.product_type_id, CartItem.deleted_at.is_(None)).first()
+        total_requested = (existing.quantity if existing else 0) + int(item_in.quantity)
+        if pt.stock is not None and total_requested > pt.stock:
+            return BaseResponse(success=False, message=f"Không đủ tồn kho: yêu cầu {total_requested}, còn {pt.stock}.", data=None)
+        
+        obj = add_cart_item(db, cart_id, item_in, created_by=str(current_user.id))
+        return BaseResponse(success=True, message="Sản phẩm đã được thêm vào giỏ hàng.", data=obj)
+    except Exception as e:
+        return BaseResponse(success=False, message=f"Đã xảy ra lỗi: {str(e)}", data=None)
+
+
 @router.post("/{cart_id}/items", response_model=BaseResponse[CartItemResponse], status_code=status.HTTP_201_CREATED)
 def add_item(cart_id: str, item_in: CartItemCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     try:

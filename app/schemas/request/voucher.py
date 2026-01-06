@@ -11,6 +11,9 @@ class VoucherBase(BaseModel):
     discount: float = Field(..., ge=0, le=1)
     description: Optional[str] = Field(None, max_length=255)
     quantity: int = Field(1, ge=1)
+    min_order_amount: Optional[float] = Field(0, ge=0)
+    max_discount: Optional[float] = Field(None, ge=0)
+
 
     @validator("code")
     def normalize_code(cls, v: str) -> str:
