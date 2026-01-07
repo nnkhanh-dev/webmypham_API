@@ -1,3 +1,4 @@
+from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session
 from app.schemas.request.order import OrderCreate
 from app.models.order import Order
@@ -5,10 +6,34 @@ from app.models.orderDetail import OrderDetail
 from app.models.productType import ProductType
 from app.repositories.order_repository import OrderRepository
 
+
 class OrderService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = OrderRepository(db)
+
+    def get_user_orders(
+        self,
+        user_id: str,
+        skip: int = 0,
+        limit: int = 20,
+        status: Optional[str] = None,
+        sort_order: str = "desc"
+    ) -> Tuple[List[Order], int]:
+        """Lấy lịch sử đơn hàng của user"""
+        return self.repo.get_by_user(
+            user_id=user_id,
+            skip=skip,
+            limit=limit,
+            status=status,
+            sort_order=sort_order
+        )
+
+    def get_order_detail(self, order_id: str, user_id: Optional[str] = None) -> Optional[Order]:
+        """Lấy chi tiết đơn hàng. Nếu có user_id thì kiểm tra quyền sở hữu."""
+        if user_id:
+            return self.repo.get_user_order_detail(order_id, user_id)
+        return self.repo.get_detail(order_id)
 
     def create_order(self, order_in: OrderCreate):
         # Tính tổng tiền, giảm giá, ... và lưu

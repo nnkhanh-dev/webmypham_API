@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from app.core.middleware import AuthMiddleware,TraceIdMiddleware
 from app.routers.v1.vouchers import router as vouchers_router
 from app.routers.v1.brands import router as brands_router
@@ -16,6 +17,8 @@ from app.routers.v1.review import router as reviews_router
 from app.routers.v1.addresses import router as addresses_router
 from app.routers.v1.administrative import router as administrative_router
 from app.routers.v1.product import router as product_router
+from app.routers.v1.order import router as orders_router
+from app.routers.v1.upload import router as upload_router
 from app.routers.v1.checkout import router as checkout_router
 
 app = FastAPI(
@@ -57,6 +60,10 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+# Static files for uploads
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 # CORS middleware - cho phép Frontend gọi API
 app.add_middleware(
     CORSMiddleware,
@@ -90,8 +97,11 @@ app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
 app.include_router(addresses_router, prefix="/api/v1/users/me/addresses", tags=["addresses"])
 app.include_router(administrative_router, prefix="/api/v1/administrative", tags=["administrative"])
 app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
+app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
+app.include_router(upload_router, prefix="/api/v1/upload", tags=["upload"])
 app.include_router(checkout_router, prefix="/api/v1/checkout", tags=["checkout"])
 
 @app.get("/")
 def health_check():
     return {"status": "ok"}
+
