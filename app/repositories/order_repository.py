@@ -45,6 +45,7 @@ class OrderRepository(BaseRepository[Order]):
         
         return orders, total
 
+
     def get_detail(self, order_id: str) -> Optional[Order]:
         """Lấy chi tiết đơn hàng kèm items và payment"""
         return self.db.query(Order)\

@@ -19,6 +19,7 @@ class VoucherBase(BaseModel):
     limit: Optional[int] = Field(None, ge=0)
 
 
+
     @validator("code")
     def normalize_code(cls, v: str) -> str:
         v2 = v.strip()
