@@ -20,6 +20,7 @@ from app.routers.v1.product import router as product_router
 from app.routers.v1.order import router as orders_router
 from app.routers.v1.upload import router as upload_router
 from app.routers.v1.checkout import router as checkout_router
+from app.routers.v1.statistics import router as statistics_router
 
 app = FastAPI(
     title="WebMyPham API",
@@ -100,6 +101,7 @@ app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
 app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
 app.include_router(upload_router, prefix="/api/v1/upload", tags=["upload"])
 app.include_router(checkout_router, prefix="/api/v1/checkout", tags=["checkout"])
+app.include_router(statistics_router, prefix="/api/v1/statistics", tags=["statistics"])
 
 @app.get("/")
 def health_check():

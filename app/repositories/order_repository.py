@@ -66,7 +66,6 @@ class OrderRepository(BaseRepository[Order]):
                 Order.deleted_at.is_(None)
             )\
             .first()
-            ).first()
 
     def get_pending_sepay_expired(self, timeout_minutes: int = 15) -> List[Order]:
         """Lấy các đơn SEPAY pending đã quá thời gian thanh toán"""
