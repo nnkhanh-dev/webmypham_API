@@ -1,9 +1,7 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from enum import Enum
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
 
 from app.dependencies.database import get_db
 from app.dependencies.auth import get_current_user
@@ -30,44 +28,6 @@ from app.repositories.product_repository import ProductRepository
 router = APIRouter()
 
 
-
-# def transform_product_to_card(product: Product, db: Session, avg_rating: float = None, review_count: int = None, total_sold: int = None) -> ProductCardResponse:
-#     """Helper function để transform Product thành ProductCardResponse"""
-#     # Lấy giá từ product_types
-#     prices = [pt.price for pt in product.product_types if pt.price and pt.deleted_at is None]
-#     discount_prices = [pt.discount_price for pt in product.product_types if pt.discount_price and pt.deleted_at is None]
-    
-#     # Nếu chưa có review_count, tính từ DB
-#     if review_count is None:
-#         review_count = db.query(func.count(Review.id)).filter(
-#             Review.product_id == product.id,
-#             Review.deleted_at.is_(None)
-#         ).scalar() or 0
-    
-#     # Nếu chưa có avg_rating, tính từ DB
-#     if avg_rating is None and review_count > 0:
-#         avg_rating = db.query(func.avg(Review.rating)).filter(
-#             Review.product_id == product.id,
-#             Review.deleted_at.is_(None)
-#         ).scalar()
-    
-#     return ProductCardResponse(
-#         id=product.id,
-#         name=product.name,
-#         thumbnail=product.thumbnail,
-#         description=product.description,
-#         brand_name=product.brand.name if product.brand else None,
-#         category_name=product.category.name if product.category else None,
-#         min_price=min(prices) if prices else None,
-#         max_price=max(prices) if prices else None,
-#         min_discount_price=min(discount_prices) if discount_prices else None,
-#         avg_rating=round(avg_rating, 1) if avg_rating else None,
-#         review_count=review_count,
-#         total_sold=total_sold or 0
-#     )
-
-
-
 class SortOrder(str, Enum):
     asc = "asc"
     desc = "desc"
@@ -79,7 +39,7 @@ class ProductSortBy(str, Enum):
     updated_at = "updated_at"
 
 
-# ==================== GET ====================
+# ==================== GET (Public) ====================
 
 @router.get("", response_model=BaseResponse[PaginatedResponse[ProductDetailResponse]])
 def get_all_products(
@@ -95,18 +55,7 @@ def get_all_products(
     limit: int = Query(20, ge=1, le=100, description="Số lượng lấy"),
     db: Session = Depends(get_db)
 ):
-    """
-    Lấy danh sách sản phẩm với tìm kiếm và lọc.
-    
-    - **keyword**: Tìm theo tên hoặc mô tả sản phẩm (không phân biệt hoa thường)
-    - **brand_id**: Lọc theo ID thương hiệu
-    - **category_id**: Lọc theo ID danh mục
-    - **min_price**: Lọc sản phẩm có giá >= giá trị này
-    - **max_price**: Lọc sản phẩm có giá <= giá trị này
-    - **is_active**: Lọc theo trạng thái (mặc định: True - chỉ lấy sản phẩm đang hoạt động)
-    - **sort_by**: Sắp xếp theo trường (created_at, name, updated_at)
-    - **sort_order**: Thứ tự sắp xếp (asc, desc)
-    """
+    """Lấy danh sách sản phẩm với tìm kiếm và lọc (Public)"""
     service = ProductService(db)
     products, total = service.search_with_filters(
         keyword=keyword,
@@ -184,31 +133,57 @@ def get_product_detail(product_id: str, db: Session = Depends(get_db)):
     return BaseResponse(success=True, message="Lấy thông tin sản phẩm thành công.", data=product)
 
 
-# ==================== POST ====================
+# ==================== POST/PUT/DELETE (Admin only) ====================
 
 @router.post("", response_model=BaseResponse[ProductDetailResponse], status_code=status.HTTP_201_CREATED)
-def create_product(
-    data: ProductCreateRequest,
+async def create_product(
+    name: str = Form(..., description="Tên sản phẩm"),
+    brand_id: Optional[str] = Form(None, description="ID thương hiệu"),
+    category_id: Optional[str] = Form(None, description="ID danh mục"),
+    description: Optional[str] = Form(None, description="Mô tả sản phẩm"),
+    is_active: bool = Form(True, description="Trạng thái hoạt động"),
+    thumbnail: Optional[UploadFile] = File(None, description="File ảnh thumbnail"),
     db: Session = Depends(get_db),
     current_user = Depends(require_roles("admin"))
 ):
     """
-    Tạo sản phẩm mới.
-    - Chỉ admin mới có quyền
-    """
-    service = ProductService(db)
-    product = service.create(data, created_by=current_user.id)
+    Tạo sản phẩm mới với upload thumbnail (Admin only)
     
-    # Refresh để lấy thông tin đầy đủ
+    - **name**: Tên sản phẩm (bắt buộc)
+    - **brand_id**: ID thương hiệu
+    - **category_id**: ID danh mục
+    - **description**: Mô tả sản phẩm
+    - **is_active**: Trạng thái (mặc định: true)
+    - **thumbnail**: File ảnh thumbnail (jpg, png, gif, webp)
+    """
+    from app.services.upload_product_service import save_upload_file, get_upload_url
+    
+    # Xử lý upload thumbnail nếu có
+    thumbnail_path = None
+    if thumbnail and thumbnail.filename:
+        saved_filename = await save_upload_file(thumbnail, "products")
+        thumbnail_path = get_upload_url(saved_filename)
+    
+    # Tạo request data
+    product_data = ProductCreateRequest(
+        name=name,
+        brand_id=brand_id,
+        category_id=category_id,
+        description=description,
+        thumbnail=thumbnail_path,
+        is_active=is_active
+    )
+    
+    service = ProductService(db)
+    product = service.create(product_data, created_by=current_user.id)
     created_product = service.get_detail(product.id)
+    
     return BaseResponse(
         success=True, 
         message="Tạo sản phẩm thành công.", 
         data=created_product
     )
 
-
-# ==================== PUT ====================
 
 @router.put("/{product_id}", response_model=BaseResponse[ProductDetailResponse])
 def update_product(
@@ -217,13 +192,9 @@ def update_product(
     db: Session = Depends(get_db),
     current_user = Depends(require_roles("admin"))
 ):
-    """
-    Cập nhật thông tin sản phẩm.
-    - Chỉ admin mới có quyền
-    """
+    """Cập nhật thông tin sản phẩm (Admin only)"""
     service = ProductService(db)
     
-    # Kiểm tra sản phẩm tồn tại
     existing = service.get_detail(product_id)
     if not existing:
         raise HTTPException(
@@ -238,7 +209,6 @@ def update_product(
             detail="Cập nhật sản phẩm thất bại."
         )
     
-    # Refresh để lấy thông tin đầy đủ
     updated_product = service.get_detail(product_id)
     return BaseResponse(
         success=True, 
@@ -246,7 +216,6 @@ def update_product(
         data=updated_product
     )
 
-# ==================== DELETE ====================
 
 @router.delete("/{product_id}", response_model=BaseResponse)
 def delete_product(
@@ -254,13 +223,9 @@ def delete_product(
     db: Session = Depends(get_db),
     current_user = Depends(require_roles("admin"))
 ):
-    """
-    Xóa sản phẩm (soft delete).
-    - Chỉ admin mới có quyền
-    """
+    """Xóa sản phẩm (Admin only, soft delete)"""
     service = ProductService(db)
     
-    # Kiểm tra sản phẩm tồn tại
     existing = service.get_detail(product_id)
     if not existing:
         raise HTTPException(
@@ -277,141 +242,49 @@ def delete_product(
     
     return BaseResponse(success=True, message="Xóa sản phẩm thành công.", data=None)
 
-@router.get("/{product_id}/variants", response_model=BaseResponse[ProductVariantsListResponse])
-def get_product_variants(product_id: str, db: Session = Depends(get_db)):
+
+# ==================== Upload Thumbnail ====================
+
+@router.post("/{product_id}/thumbnail", response_model=BaseResponse[ProductDetailResponse])
+async def upload_product_thumbnail(
+    product_id: str,
+    file: UploadFile = File(..., description="File ảnh thumbnail"),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_roles("admin"))
+):
     """
-    Lấy danh sách tất cả biến thể của sản phẩm.
-    Dùng khi user click "Đổi phân loại" trong giỏ hàng.
+    Upload thumbnail cho sản phẩm (Admin only)
+    
+    - **file**: File ảnh (jpg, jpeg, png, gif, webp)
+    
+    Ảnh sẽ được lưu với tên unique: {timestamp}_{uuid}_{original_name}
     """
-    # Lấy product
-    product = db.query(Product).filter(
-        Product.id == product_id,
-        Product.deleted_at.is_(None)
-    ).first()
+    from app.services.upload_product_service import save_upload_file, get_upload_url
     
-    if not product:
-        return BaseResponse(success=False, message="Không tìm thấy sản phẩm.", data=None)
+    service = ProductService(db)
     
-    # Lấy tất cả variants với eager loading type_value
-    variants = db.query(ProductType).options(
-        joinedload(ProductType.type_value)
-    ).filter(
-        ProductType.product_id == product_id,
-        ProductType.deleted_at.is_(None)
-    ).all()
-    
-    # Transform variants with is_available computed
-    variant_list = []
-    for v in variants:
-        variant_data = ProductVariantResponse(
-            id=v.id,
-            price=v.price,
-            discount_price=v.discount_price,
-            stock=v.stock,
-            image_path=v.image_path,
-            volume=v.volume,
-            skin_type=v.skin_type,
-            origin=v.origin,
-            status=v.status,
-            type_value=v.type_value,
-            is_available=(v.stock is None or v.stock > 0)  # False nếu stock = 0
+    # Kiểm tra sản phẩm tồn tại
+    existing = service.get_detail(product_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy sản phẩm."
         )
-        variant_list.append(variant_data)
     
-    result = ProductVariantsListResponse(
-        product_id=product.id,
-        product_name=product.name,
-        product_thumbnail=product.thumbnail,
-        variants=variant_list
+    # Upload file
+    saved_filename = await save_upload_file(file, "products")
+    thumbnail_url = get_upload_url(saved_filename)
+    
+    # Cập nhật sản phẩm với thumbnail mới
+    from app.schemas.request.product import ProductUpdateRequest
+    update_data = ProductUpdateRequest(thumbnail=thumbnail_url)
+    service.update(product_id, update_data, updated_by=current_user.id)
+    
+    # Lấy lại thông tin sản phẩm đã cập nhật
+    updated_product = service.get_detail(product_id)
+    
+    return BaseResponse(
+        success=True,
+        message="Upload thumbnail thành công.",
+        data=updated_product
     )
-    
-    return BaseResponse(success=True, message="Lấy danh sách biến thể thành công.", data=result)
-
-
-# # --- Homepage APIs ---
-
-# @router.get("/homepage/best-selling", response_model=BaseResponse[ProductListResponse])
-# def get_best_selling_products(
-#     limit: int = Query(default=8, ge=1, le=20),
-#     db: Session = Depends(get_db)
-# ):
-#     """Lấy danh sách sản phẩm bán chạy nhất cho homepage"""
-#     repo = ProductRepository(db)
-#     results = repo.get_best_selling(limit)
-    
-#     items = []
-#     for product, total_sold in results:
-#         card = transform_product_to_card(product, db, total_sold=int(total_sold) if total_sold else 0)
-#         items.append(card)
-    
-#     return BaseResponse(
-#         success=True, 
-#         message="Lấy sản phẩm bán chạy thành công.",
-#         data=ProductListResponse(items=items, total=len(items))
-#     )
-
-
-# @router.get("/homepage/top-rated", response_model=BaseResponse[ProductListResponse])
-# def get_top_rated_products(
-#     limit: int = Query(default=8, ge=1, le=20),
-#     db: Session = Depends(get_db)
-# ):
-#     """Lấy danh sách sản phẩm rating cao nhất cho homepage"""
-#     repo = ProductRepository(db)
-#     results = repo.get_top_rated(limit)
-    
-#     items = []
-#     for product, avg_rating, review_count in results:
-#         card = transform_product_to_card(
-#             product, db, 
-#             avg_rating=float(avg_rating) if avg_rating else None,
-#             review_count=int(review_count)
-#         )
-#         items.append(card)
-    
-#     return BaseResponse(
-#         success=True, 
-#         message="Lấy sản phẩm rating cao thành công.",
-#         data=ProductListResponse(items=items, total=len(items))
-#     )
-
-
-# @router.get("/homepage/new-arrivals", response_model=BaseResponse[ProductListResponse])
-# def get_new_arrivals(
-#     limit: int = Query(default=8, ge=1, le=20),
-#     db: Session = Depends(get_db)
-# ):
-#     """Lấy danh sách sản phẩm mới nhất cho homepage"""
-#     repo = ProductRepository(db)
-#     products = repo.get_new_arrivals(limit)
-    
-#     items = [transform_product_to_card(p, db) for p in products]
-    
-#     return BaseResponse(
-#         success=True, 
-#         message="Lấy sản phẩm mới thành công.",
-#         data=ProductListResponse(items=items, total=len(items))
-#     )
-
-
-# @router.get("/homepage/most-favorite", response_model=BaseResponse[ProductListResponse])
-# def get_most_favorite_products(
-#     limit: int = Query(default=8, ge=1, le=20),
-#     db: Session = Depends(get_db)
-# ):
-#     """Lấy danh sách sản phẩm được yêu thích nhất cho homepage"""
-#     repo = ProductRepository(db)
-#     results = repo.get_most_favorite(limit)
-    
-#     items = []
-#     for product, favorite_count in results:
-#         card = transform_product_to_card(product, db)
-#         card.favorite_count = int(favorite_count)
-#         items.append(card)
-    
-#     return BaseResponse(
-#         success=True, 
-#         message="Lấy sản phẩm yêu thích thành công.",
-#         data=ProductListResponse(items=items, total=len(items))
-#     )
-

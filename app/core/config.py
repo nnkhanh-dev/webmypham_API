@@ -42,6 +42,13 @@ class Settings(BaseSettings):
             return v
         return []
 
+    # --- SePay Configuration ---
+    SEPAY_ACCOUNT_NUMBER: str = ""
+    SEPAY_ACCOUNT_NAME: str = ""
+    SEPAY_BANK_ID: str = "MB"
+    SEPAY_TEMPLATE: str = "compact2"
+    SEPAY_WEBHOOK_SECRET: str = ""
+
     # --- Mail Configuration (SMTP) ---
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

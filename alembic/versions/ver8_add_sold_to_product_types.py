@@ -1,8 +1,8 @@
-"""add sold column to product_types
+"""add sold column to product_types table
 
-Revision ID: ver6
-Revises: ver5_add_full_name_phone_to_address
-Create Date: 2026-01-06
+Revision ID: ver8
+Revises: ver7
+Create Date: 2026-01-07
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'ver6_add_sold_to_product_types'
-down_revision = 'ver5_add_full_name_phone_to_address'
+revision = 'ver8'
+down_revision = 'ver7'
 branch_labels = None
 depends_on = None
 
@@ -22,5 +22,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Xóa cột sold
+    # Xóa cột sold khỏi bảng product_types
     op.drop_column('product_types', 'sold')
