@@ -1,12 +1,12 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.dependencies.database import get_db
-from app.dependencies.pagination import get_pagination
 from app.dependencies.permission import require_roles
 from app.schemas.request.voucher import VoucherCreate, VoucherUpdate, VoucherResponse
 from app.schemas.response.base import BaseResponse
+from app.schemas.response.pagination import PaginatedResponse
 from app.services.voucher_service import (
     get_voucher,
     get_voucher_by_code,
@@ -18,24 +18,55 @@ from app.services.voucher_service import (
 
 router = APIRouter()
 
-@router.get("/", response_model=BaseResponse[List[VoucherResponse]])
+
+class VoucherPaginatedResponse(PaginatedResponse[VoucherResponse]):
+    """Paginated response for vouchers"""
+    pass
+
+
+@router.get("/", response_model=BaseResponse[VoucherPaginatedResponse])
 def list_vouchers(
-    params: dict = Depends(get_pagination),
+    skip: int = Query(0, ge=0, description="Số lượng bỏ qua"),
+    limit: int = Query(20, ge=1, le=100, description="Số lượng lấy"),
+    q: Optional[str] = Query(None, description="Tìm kiếm theo mã hoặc mô tả"),
+    min_discount: Optional[float] = Query(None, ge=0, description="Giảm giá tối thiểu (%)"),
+    max_discount: Optional[float] = Query(None, le=100, description="Giảm giá tối đa (%)"),
+    sort_by: str = Query("created_at", description="Sắp xếp theo: id, code, discount, quantity, created_at"),
+    sort_dir: str = Query("desc", description="Thứ tự: asc, desc"),
     db: Session = Depends(get_db),
     current_user = Depends(require_roles("CLIENT", "ADMIN")),
 ):
+    """
+    Lấy danh sách vouchers với phân trang và tìm kiếm
+    
+    - **skip**: Số lượng bỏ qua (phân trang)
+    - **limit**: Số lượng lấy tối đa
+    - **q**: Tìm kiếm theo mã hoặc mô tả
+    - **min_discount**: Lọc theo giảm giá tối thiểu (%)
+    - **max_discount**: Lọc theo giảm giá tối đa (%)
+    - **sort_by**: Sắp xếp theo field
+    - **sort_dir**: Thứ tự sắp xếp (asc/desc)
+    """
     items, total = get_vouchers(
         db,
-        skip=params.get("skip", 0),
-        limit=params.get("limit", 100),
-        q=params.get("q"),
-        min_discount=params.get("min_discount"),
-        max_discount=params.get("max_discount"),
-        sort_by=params.get("sort_by", "id"),
-        sort_dir=params.get("sort_dir", "desc"),
+        skip=skip,
+        limit=limit,
+        q=q,
+        min_discount=min_discount,
+        max_discount=max_discount,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
     )
-    meta = {**params, "total": total}
-    return BaseResponse(success=True, message="OK", data=items, meta=meta)
+    
+    paginated_data = VoucherPaginatedResponse(
+        items=items,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
+    
+    return BaseResponse(success=True, message="Lấy danh sách voucher thành công.", data=paginated_data)
+
 
 @router.get("/{voucher_id}", response_model=BaseResponse[VoucherResponse])
 def read_voucher(voucher_id: str, db: Session = Depends(get_db), current_user = Depends(require_roles("CLIENT", "ADMIN"))):
@@ -53,9 +84,21 @@ def create_voucher_endpoint(voucher_in: VoucherCreate, db: Session = Depends(get
 
 @router.put("/{voucher_id}", response_model=BaseResponse[VoucherResponse])
 def update_voucher_endpoint(voucher_id: str, voucher_in: VoucherUpdate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
-    obj = update_voucher(db, voucher_id, voucher_in, updated_by=str(current_user.id) if current_user else None)
-    if not obj:
+    # Kiểm tra voucher tồn tại
+    existing = get_voucher(db, voucher_id)
+    if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voucher not found")
+    
+    # Kiểm tra duplicate code nếu đang thay đổi code
+    if voucher_in.code and voucher_in.code.upper() != existing.code:
+        duplicate = get_voucher_by_code(db, voucher_in.code)
+        if duplicate and duplicate.id != voucher_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=f"Voucher code '{voucher_in.code.upper()}' already exists"
+            )
+    
+    obj = update_voucher(db, voucher_id, voucher_in, updated_by=str(current_user.id) if current_user else None)
     return BaseResponse(success=True, message="Updated", data=obj)
 
 @router.delete("/{voucher_id}", response_model=BaseResponse[None])
