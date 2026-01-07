@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -13,9 +14,12 @@ from app.routers.v1.auth import router as auth_router
 from app.routers.v1.users import router as users_router
 from app.routers.v1.categories import router as categories_router
 from app.routers.v1.review import router as reviews_router
+from app.routers.v1.addresses import router as addresses_router
+from app.routers.v1.administrative import router as administrative_router
 from app.routers.v1.product import router as product_router
 from app.routers.v1.order import router as orders_router
 from app.routers.v1.upload import router as upload_router
+from app.routers.v1.checkout import router as checkout_router
 
 app = FastAPI(
     title="WebMyPham API",
@@ -25,6 +29,16 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def custom_openapi():
     if app.openapi_schema:
@@ -50,6 +64,20 @@ app.openapi = custom_openapi
 UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+# CORS middleware - cho phép Frontend gọi API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",      # Vite dev server
+        "http://localhost:3000",      # Alternative dev server
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        # "https://your-frontend-domain.com",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # middleware
 app.add_middleware(TraceIdMiddleware) 
@@ -66,9 +94,12 @@ app.include_router(categories_router, prefix="/api/v1/categories", tags=["catego
 app.include_router(carts_router, prefix="/api/v1/carts", tags=["carts"])
 app.include_router(wishlists_router, prefix="/api/v1/wishlists", tags=["wishlists"])
 app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
+app.include_router(addresses_router, prefix="/api/v1/users/me/addresses", tags=["addresses"])
+app.include_router(administrative_router, prefix="/api/v1/administrative", tags=["administrative"])
 app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
 app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
 app.include_router(upload_router, prefix="/api/v1/upload", tags=["upload"])
+app.include_router(checkout_router, prefix="/api/v1/checkout", tags=["checkout"])
 
 @app.get("/")
 def health_check():

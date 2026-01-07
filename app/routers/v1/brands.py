@@ -16,7 +16,7 @@ from app.services.brand_service import (
     soft_delete_brand,
 )
 
-router = APIRouter(prefix="/brands", tags=["brands"])
+router = APIRouter()
 
 
 @router.get("/", response_model=BaseResponse[List[BrandResponse]])

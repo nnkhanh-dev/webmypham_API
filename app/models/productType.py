@@ -20,3 +20,4 @@ class ProductType(AuditMixin, Base):
     skin_type = Column(String(100))
     origin = Column(String(100))
     product = relationship("Product", back_populates="product_types")
+    type_value = relationship("TypeValue")  # Thêm relationship để load tên biến thể (màu sắc, dung tích...)

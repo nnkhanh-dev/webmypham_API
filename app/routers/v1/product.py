@@ -7,10 +7,23 @@ from app.dependencies.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.permission import require_roles
 from app.schemas.response.base import BaseResponse
+from app.schemas.response.product import (
+    ProductVariantResponse, 
+    ProductVariantsListResponse,
+    ProductCardResponse,
+    ProductListResponse
+)
 from app.schemas.response.product import ProductDetailResponse
 from app.schemas.response.pagination import PaginatedResponse
 from app.schemas.request.product import ProductCreateRequest, ProductUpdateRequest
 from app.services.product_service import ProductService
+from app.schemas.response.product import ProductVariantResponse, ProductVariantsListResponse
+
+from app.models.product import Product
+from app.models.productType import ProductType
+from app.models.review import Review
+from app.repositories.product_repository import ProductRepository
+
 
 router = APIRouter()
 

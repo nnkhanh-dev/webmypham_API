@@ -1,13 +1,26 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
+
+# Database
 sqlalchemy==2.0.36
 pymysql==1.1.1
 alembic==1.14.0
+
+# Environment
 python-dotenv==1.0.1
+
+# Validation & Settings
 pydantic[email]==2.10.4
-python-jose[cryptography]==3.3.0
-passlib[argon2]==1.7.4
-python-multipart==0.0.20
-argon2-cffi==23.1.0
 pydantic-settings==2.7.0
+
+# Auth & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt,argon2]==1.7.4
+bcrypt==4.1.2
+argon2-cffi==23.1.0
+
+# Upload & Utils
+python-multipart==0.0.20
 python-slugify==8.0.1
+python-slugify==8.0.1
+httpx==0.27.0

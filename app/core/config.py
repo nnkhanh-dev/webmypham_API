@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     # --- Security & JWT ---
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60
     
     # --- Server Configuration ---
     DEBUG: bool = False
@@ -40,6 +41,13 @@ class Settings(BaseSettings):
         elif isinstance(v, list):
             return v
         return []
+
+    # --- SePay Configuration ---
+    SEPAY_ACCOUNT_NUMBER: str = ""
+    SEPAY_ACCOUNT_NAME: str = ""
+    SEPAY_BANK_ID: str = "MB"
+    SEPAY_TEMPLATE: str = "compact2"
+    SEPAY_WEBHOOK_SECRET: str = ""
 
     # --- Mail Configuration (SMTP) ---
     SMTP_HOST: str = ""

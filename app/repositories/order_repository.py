@@ -2,7 +2,9 @@ from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc
 from app.models.order import Order
+from app.models.orderDetail import OrderDetail
 from app.repositories.base import BaseRepository
+
 
 
 class OrderRepository(BaseRepository[Order]):
@@ -64,3 +66,37 @@ class OrderRepository(BaseRepository[Order]):
                 Order.deleted_at.is_(None)
             )\
             .first()
+            ).first()
+
+    def get_pending_sepay_expired(self, timeout_minutes: int = 15) -> List[Order]:
+        """Lấy các đơn SEPAY pending đã quá thời gian thanh toán"""
+        cutoff_time = datetime.now() - timedelta(minutes=timeout_minutes)
+        return self.db.query(Order)\
+            .options(joinedload(Order.details))\
+            .filter(
+                Order.status == "pending",
+                Order.payment_method == "SEPAY",
+                Order.created_at < cutoff_time,
+                Order.deleted_at.is_(None)
+            ).all()
+
+    def update_status(self, order_id: str, status: str) -> bool:
+        """Cập nhật trạng thái đơn hàng"""
+        order = self.get(order_id)
+        if not order:
+            return False
+        order.status = status
+        self.db.commit()
+        return True
+
+    def create_order(self, order_data: dict, order_details: List[dict]) -> Order:
+        """Tạo đơn hàng mới với order details"""
+        order = Order(**order_data)
+        self.db.add(order)
+        self.db.flush()
+        
+        for detail_data in order_details:
+            detail = OrderDetail(**detail_data, order_id=order.id)
+            self.db.add(detail)
+        
+        return order
