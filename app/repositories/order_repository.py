@@ -1,4 +1,5 @@
 from typing import Optional, List, Tuple
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc
 from app.models.order import Order
@@ -47,21 +48,33 @@ class OrderRepository(BaseRepository[Order]):
 
 
     def get_detail(self, order_id: str) -> Optional[Order]:
-        """Lấy chi tiết đơn hàng kèm items và payment"""
+        """Lấy chi tiết đơn hàng kèm items, payment, address, voucher"""
         return self.db.query(Order)\
             .options(
                 joinedload(Order.details),
-                joinedload(Order.payment)
+                joinedload(Order.payment),
+                joinedload(Order.address),
+                joinedload(Order.voucher)
             )\
             .filter(Order.id == order_id, Order.deleted_at.is_(None))\
             .first()
+
+    def get_by_id_and_user(self, order_id: str, user_id: str) -> Optional[Order]:
+        """Lấy đơn hàng theo ID và UserID (không load quan hệ phức tạp)"""
+        return self.db.query(Order).filter(
+            Order.id == order_id,
+            Order.user_id == user_id,
+            Order.deleted_at.is_(None)
+        ).first()
 
     def get_user_order_detail(self, order_id: str, user_id: str) -> Optional[Order]:
         """Lấy chi tiết đơn hàng của user cụ thể (bảo mật)"""
         return self.db.query(Order)\
             .options(
                 joinedload(Order.details),
-                joinedload(Order.payment)
+                joinedload(Order.payment),
+                joinedload(Order.address),
+                joinedload(Order.voucher)
             )\
             .filter(
                 Order.id == order_id,

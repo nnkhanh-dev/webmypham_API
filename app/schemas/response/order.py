@@ -18,11 +18,23 @@ class OrderItemResponse(BaseModel):
     """Chi tiết đơn hàng"""
     id: str
     product_type_id: str
-    quantity: Optional[int] = None
-    number: Optional[int] = None  # alias for quantity in DB
+    number: Optional[int] = None
     price: Optional[float] = None
     product_type: Optional[ProductTypeInfo] = None
 
+    class Config:
+        from_attributes = True
+
+
+class AddressInfo(BaseModel):
+    """Thông tin địa chỉ giao hàng"""
+    full_name: str
+    phone_number: str
+    province: str
+    district: str
+    ward: str
+    detail: str
+    
     class Config:
         from_attributes = True
 
@@ -40,32 +52,40 @@ class PaymentInfo(BaseModel):
 
 
 class OrderResponse(BaseModel):
-    """Response cho một đơn hàng"""
+    """Response cho một đơn hàng (list view)"""
     id: str
     user_id: str
     status: str
-    total_amount: float
-    discount_amount: Optional[float] = None
-    final_amount: float
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-
-class OrderDetailResponse(BaseModel):
-    """Response chi tiết đơn hàng kèm items và payment"""
-    id: str
-    user_id: str
-    status: str
+    payment_method: Optional[str] = None
     total_amount: float
     discount_amount: Optional[float] = None
     final_amount: float
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     items: List[OrderItemResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class OrderDetailResponse(BaseModel):
+    """Response chi tiết đơn hàng kèm items, address và payment"""
+    id: str
+    user_id: str
+    status: str
+    payment_method: Optional[str] = None
+    total_amount: float
+    discount_amount: Optional[float] = None
+    final_amount: float
+    note: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    items: List[OrderItemResponse] = []
+    address: Optional[AddressInfo] = None
     payment: Optional[PaymentInfo] = None
+    voucher_code: Optional[str] = None
+    payment_expires_at: Optional[datetime] = None
+    remaining_seconds: Optional[int] = None
 
     class Config:
         from_attributes = True

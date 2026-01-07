@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from app.models.order import Order
@@ -267,11 +267,11 @@ class CheckoutService:
         if not order:
             return {"success": False, "message": "Không tìm thấy đơn hàng."}
 
-        if order.payment_method != "COD":
-            return {"success": False, "message": "Chỉ có thể hủy đơn thanh toán khi nhận hàng (COD)."}
+        if order.payment_method not in ["COD", "SEPAY"]:
+            return {"success": False, "message": "Phương thức thanh toán này không hỗ trợ hủy tự động."}
 
         if order.status != "pending":
-            return {"success": False, "message": "Không thể hủy đơn hàng đã được xác nhận."}
+            return {"success": False, "message": "Không thể hủy đơn hàng đã được xác nhận hoặc đang xử lý."}
 
         # Cập nhật trạng thái
         order.status = "cancelled"
@@ -338,9 +338,15 @@ class CheckoutService:
         
         if not order.created_at:
             return False
-            
-        expire_time = order.created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
-        return datetime.now() > expire_time
+        
+        # Đảm bảo created_at có timezone, nếu không thì gán UTC
+        created_at = order.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        
+        expire_time = created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
+        now = datetime.now(timezone.utc)
+        return now > expire_time
 
     def get_payment_remaining_time(self, order: Order) -> int:
         """Lấy thời gian còn lại để thanh toán (giây)"""
@@ -349,9 +355,15 @@ class CheckoutService:
         
         if not order.created_at:
             return 0
-            
-        expire_time = order.created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
-        remaining = (expire_time - datetime.now()).total_seconds()
+        
+        # Đảm bảo created_at có timezone, nếu không thì gán UTC
+        created_at = order.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        
+        expire_time = created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
+        now = datetime.now(timezone.utc)
+        remaining = (expire_time - now).total_seconds()
         return max(0, int(remaining))
 
     def expire_pending_payments(self) -> int:
