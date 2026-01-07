@@ -20,7 +20,7 @@ class ProductTypeCreateRequest(BaseModel):
 
 class ProductTypeUpdateRequest(BaseModel):
     """Schema để cập nhật ProductType"""
-    id: Optional[str] = Field(None, description="ID của ProductType (nếu cập nhật existing)")
+    id: Optional[str] = Field(None, description="ID của ProductType")
     price: Optional[float] = Field(None, ge=0)
     discount_price: Optional[float] = Field(None, ge=0)
     quantity: Optional[int] = Field(None, ge=0)
@@ -55,16 +55,7 @@ class ProductCreateRequest(BaseModel):
                 "category_id": "uuid-category-id",
                 "description": "Kem dưỡng ẩm cao cấp từ Hàn Quốc",
                 "thumbnail": "/images/products/kem-duong.jpg",
-                "is_active": True,
-                "product_types": [
-                    {
-                        "price": 350000,
-                        "discount_price": 299000,
-                        "volume": "50ml",
-                        "stock": 100,
-                        "origin": "Hàn Quốc"
-                    }
-                ]
+                "is_active": True
             }
         }
 

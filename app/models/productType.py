@@ -19,5 +19,7 @@ class ProductType(AuditMixin, Base):
     usage = Column(String(255))
     skin_type = Column(String(100))
     origin = Column(String(100))
+    sold = Column(Integer, default=0)  # Số lượng đã bán
     product = relationship("Product", back_populates="product_types")
     type_value = relationship("TypeValue")  # Thêm relationship để load tên biến thể (màu sắc, dung tích...)
+

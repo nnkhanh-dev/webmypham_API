@@ -18,6 +18,7 @@ class VoucherBase(BaseModel):
     max_discount: Optional[float] = Field(None, ge=0)
     limit: Optional[int] = Field(None, ge=0)
 
+
     @validator("code")
     def normalize_code(cls, v: str) -> str:
         v2 = v.strip()
