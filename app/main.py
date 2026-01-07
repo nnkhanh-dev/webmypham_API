@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from app.core.middleware import AuthMiddleware,TraceIdMiddleware
 from app.routers.v1.vouchers import router as vouchers_router
 from app.routers.v1.brands import router as brands_router
@@ -12,6 +14,8 @@ from app.routers.v1.users import router as users_router
 from app.routers.v1.categories import router as categories_router
 from app.routers.v1.review import router as reviews_router
 from app.routers.v1.product import router as product_router
+from app.routers.v1.order import router as orders_router
+from app.routers.v1.upload import router as upload_router
 
 app = FastAPI(
     title="WebMyPham API",
@@ -42,6 +46,11 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+# Static files for uploads
+UPLOAD_DIR = Path(__file__).parent / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
 # middleware
 app.add_middleware(TraceIdMiddleware) 
 app.add_middleware(AuthMiddleware)
@@ -58,7 +67,10 @@ app.include_router(carts_router, prefix="/api/v1/carts", tags=["carts"])
 app.include_router(wishlists_router, prefix="/api/v1/wishlists", tags=["wishlists"])
 app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
 app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
+app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
+app.include_router(upload_router, prefix="/api/v1/upload", tags=["upload"])
 
 @app.get("/")
 def health_check():
     return {"status": "ok"}
+
