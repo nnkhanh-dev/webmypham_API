@@ -42,16 +42,21 @@ class CheckoutService:
         if voucher.min_order_amount and subtotal < voucher.min_order_amount:
             return False, 0, f"Đơn hàng tối thiểu {voucher.min_order_amount:,.0f}₫ để sử dụng mã này."
 
-        # Tính discount
-        discount = voucher.discount
-        if voucher.max_discount and discount > voucher.max_discount:
-            discount = voucher.max_discount
 
-        # Nếu discount > subtotal, chỉ giảm tối đa = subtotal
-        if discount > subtotal:
-            discount = subtotal
+        # Tính discount_amount từ phần trăm (10 = 10%)
+        discount_amount = subtotal * (voucher.discount / 100)
+        
+        # Áp dụng giới hạn max_discount nếu có
+        if voucher.max_discount and discount_amount > voucher.max_discount:
+            discount_amount = voucher.max_discount
 
-        return True, discount, f"Áp dụng mã {code} thành công!"
+        # Không giảm quá subtotal
+        if discount_amount > subtotal:
+            discount_amount = subtotal
+
+        return True, discount_amount, f"Áp dụng mã {code} thành công!"
+
+
 
     def preview_order(
         self,

@@ -22,6 +22,12 @@ from app.routers.v1.upload import router as upload_router
 from app.routers.v1.checkout import router as checkout_router
 from app.routers.v1.statistics import router as statistics_router
 
+from app.routers.v1.order import router as orders_router
+from app.routers.v1.upload import router as upload_router
+from app.routers.v1.checkout import router as checkout_router
+from app.routers.v1.statistics import router as statistics_router
+
+
 app = FastAPI(
     title="WebMyPham API",
     version="1.0.0",
@@ -98,6 +104,11 @@ app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
 app.include_router(addresses_router, prefix="/api/v1/users/me/addresses", tags=["addresses"])
 app.include_router(administrative_router, prefix="/api/v1/administrative", tags=["administrative"])
 app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
+app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
+app.include_router(upload_router, prefix="/api/v1/upload", tags=["upload"])
+app.include_router(checkout_router, prefix="/api/v1/checkout", tags=["checkout"])
+app.include_router(statistics_router, prefix="/api/v1/statistics", tags=["statistics"])
+
 app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
 app.include_router(upload_router, prefix="/api/v1/upload", tags=["upload"])
 app.include_router(checkout_router, prefix="/api/v1/checkout", tags=["checkout"])
