@@ -19,7 +19,18 @@ class ChatRepository:
             .first()
         )
 
-    def create_conversation(self, customer_id: str, admin_id: str | None = None):
+    def get_conversation_by_id(self, conversation_id: str):
+        return (
+            self.db.query(Conversation)
+            .filter(Conversation.id == conversation_id)
+            .first()
+        )
+
+    def create_conversation(
+        self,
+        customer_id: str,
+        admin_id: str | None = None,
+    ):
         conv = Conversation(
             customer_id=customer_id,
             admin_id=admin_id,
@@ -28,6 +39,21 @@ class ChatRepository:
         self.db.commit()
         self.db.refresh(conv)
         return conv
+
+    def assign_admin(
+        self,
+        conversation_id: str,
+        admin_id: str,
+    ):
+        self.db.query(Conversation).filter(
+            Conversation.id == conversation_id
+        ).update(
+            {
+                "admin_id": admin_id,
+                "updated_at": datetime.utcnow(),
+            }
+        )
+        self.db.commit()
 
     # =========================
     # MESSAGE
@@ -38,14 +64,13 @@ class ChatRepository:
         sender_id: str,
         message_text: str,
     ):
-        new_msg = Message(
+        msg = Message(
             conversation_id=conversation_id,
             sender_id=sender_id,
             message=message_text,
         )
 
-        # Atomic update
-        self.db.add(new_msg)
+        self.db.add(msg)
 
         self.db.query(Conversation).filter(
             Conversation.id == conversation_id
@@ -57,8 +82,21 @@ class ChatRepository:
         )
 
         self.db.commit()
-        self.db.refresh(new_msg)
-        return new_msg
+        self.db.refresh(msg)
+        return msg
+
+    def get_messages_by_conversation(
+        self,
+        conversation_id: str,
+        limit: int = 100,
+    ):
+        return (
+            self.db.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.desc())
+            .limit(limit)
+            .all()
+        )
 
     # =========================
     # ADMIN

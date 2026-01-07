@@ -35,7 +35,7 @@ async def chat_websocket(
         await manager.connect(user_id, websocket)
         print(f"✅ WS CONNECTED: {user_id}")
 
-        service = ChatService(db=db, sender_id=user_id)
+        service = ChatService(db=db, user_id=user_id)
 
         while True:
             data = await websocket.receive_json()

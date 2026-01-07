@@ -23,8 +23,8 @@ router = APIRouter()
 def list_brands(
     params: dict = Depends(get_pagination),
     db: Session = Depends(get_db),
-):
     current_user = Depends(require_roles("CLIENT", "ADMIN")),
+):
     items, total = get_brands(
         db,
         skip=params.get("skip", 0),
