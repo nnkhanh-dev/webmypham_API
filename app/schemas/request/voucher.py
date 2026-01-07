@@ -5,7 +5,7 @@ import re
 
 
 class VoucherBase(BaseModel):
-    # code normalized to upper-case alnum/_- between 3 and 50 chars
+    """Base schema cho Voucher - dùng cho Create/Update"""
     code: str = Field(..., max_length=50)
     # discount as percentage (0 - 100)
     discount: float = Field(..., ge=0, le=100)
@@ -23,8 +23,10 @@ class VoucherBase(BaseModel):
             raise ValueError("code must be 3-50 characters, letters/numbers/_/- only")
         return v2.upper()
 
+
 class VoucherCreate(VoucherBase):
     pass
+
 
 class VoucherUpdate(BaseModel):
     code: Optional[str] = Field(None, max_length=50)
@@ -53,6 +55,7 @@ class VoucherInDBBase(BaseModel):
 
     class Config:
         from_attributes = True
+
 
 class VoucherResponse(VoucherInDBBase):
     pass

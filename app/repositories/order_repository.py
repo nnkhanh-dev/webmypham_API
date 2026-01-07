@@ -7,9 +7,11 @@ from app.repositories.base import BaseRepository
 
 
 
+
 class OrderRepository(BaseRepository[Order]):
     def __init__(self, db: Session):
         super().__init__(Order, db)
+
 
     def get_by_user(
         self, 
@@ -42,6 +44,7 @@ class OrderRepository(BaseRepository[Order]):
         orders = query.offset(skip).limit(limit).all()
         
         return orders, total
+
 
     def get_detail(self, order_id: str) -> Optional[Order]:
         """Lấy chi tiết đơn hàng kèm items và payment"""
