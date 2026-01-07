@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
+    
+    # --- Google Auth Configuration ---
+    GOOGLE_CLIENT_ID: str = ""
+    
 
 # Sử dụng lru_cache để đảm bảo Settings chỉ được khởi tạo một lần (Singleton pattern)
 @lru_cache
