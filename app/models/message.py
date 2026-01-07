@@ -10,3 +10,6 @@ class Message(AuditMixin, Base):
     message = Column(Text)
     is_read = Column(Boolean, default=False)
 
+    conversation = relationship("Conversation", back_populates="messages")
+
+

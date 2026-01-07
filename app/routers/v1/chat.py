@@ -1,43 +1,43 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.sockets import manager
 from app.core.database import SessionLocal
-from app.services.chat_service import ChatService
 from app.core.security import decode_access_token
+from app.core.sockets import manager
+from app.services.chat_service import ChatService
 
 router = APIRouter()
 
 
-@router.websocket("/ws/chat/{user_id}")
+@router.websocket("/ws/chat")
 async def chat_websocket(
     websocket: WebSocket,
-    user_id: str,
-    token: str = Query(None),  # ws://.../ws/chat/{user_id}?token=xxx
+    token: str = Query(...),
 ):
-    # ===== 1. XÁC THỰC (OPTIONAL – CÓ THỂ BẬT LẠI SAU) =====
-    # if token:
-    #     payload = decode_access_token(token)
-    #     if not payload or str(payload.get("sub")) != user_id:
-    #         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-    #         return
+    # ✅ 1. PHẢI ACCEPT TRƯỚC
+    await websocket.accept()
 
-    # ===== 2. TẠO DB SESSION THỦ CÔNG (BẮT BUỘC) =====
+    # ✅ 2. VERIFY TOKEN
+    payload = decode_access_token(token)
+    if not payload:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    user_id = payload.get("sub")
+    if not user_id:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     db: Session = SessionLocal()
 
     try:
-        # ===== 3. ACCEPT KẾT NỐI =====
+        # ✅ 3. CONNECT MANAGER
         await manager.connect(user_id, websocket)
-        print(f"✅ USER CONNECTED: {user_id}")
+        print(f"✅ WS CONNECTED: {user_id}")
 
-        # sender_id = user_id (TUYỆT ĐỐI KHÔNG HARDCODE)
         service = ChatService(db=db, sender_id=user_id)
 
         while True:
-            # Nhận JSON từ client
-            # Ví dụ:
-            # USER -> {"text": "hello"}
-            # ADMIN -> {"text": "hi", "receiver_id": "customer_id"}
             data = await websocket.receive_json()
 
             response = await service.process_message(
@@ -45,23 +45,24 @@ async def chat_websocket(
                 receiver_id=data.get("receiver_id"),
             )
 
-            message_payload = response.model_dump()
+            payload = response.model_dump()
 
-            # Gửi cho chính người gửi
-            await manager.send_personal_message(message_payload, user_id)
+            # gửi lại cho sender
+            await manager.send_personal_message(payload, user_id)
 
-            # Nếu có receiver_id (admin gửi cho user)
+            # gửi cho receiver nếu có
             if data.get("receiver_id"):
                 await manager.send_personal_message(
-                    message_payload,
-                    data["receiver_id"],
+                    payload,
+                    data["receiver_id"]
                 )
 
     except WebSocketDisconnect:
+        print(f"❌ WS DISCONNECTED: {user_id}")
         manager.disconnect(user_id)
 
     except Exception as e:
-        print("❌ WebSocket error:", e)
+        print("❌ WS ERROR:", e)
         manager.disconnect(user_id)
 
     finally:

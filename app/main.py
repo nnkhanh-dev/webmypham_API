@@ -73,8 +73,8 @@ app.add_middleware(
 )
 
 # middleware
-# app.add_middleware(TraceIdMiddleware) 
-# app.add_middleware(AuthMiddleware)
+app.add_middleware(TraceIdMiddleware) 
+app.add_middleware(AuthMiddleware)
 
 # routers
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
@@ -90,7 +90,8 @@ app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
 app.include_router(addresses_router, prefix="/api/v1/users/me/addresses", tags=["addresses"])
 app.include_router(administrative_router, prefix="/api/v1/administrative", tags=["administrative"])
 app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
-# app.include_router(chat_router, prefix="/api/v1", tags=["chat"])
+app.include_router(chat_router)
+
 
 @app.get("/")
 def health_check():
