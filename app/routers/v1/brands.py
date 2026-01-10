@@ -1,18 +1,18 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
 from sqlalchemy.orm import Session
 
 from app.dependencies.database import get_db
 from app.dependencies.pagination import get_pagination
 from app.dependencies.permission import require_roles
-from app.schemas.request.brand import BrandCreate, BrandUpdate, BrandResponse
+from app.schemas.request.brand import BrandResponse
 from app.schemas.response.base import BaseResponse
 from app.services.brand_service import (
     get_brand,
     get_brand_by_name,
     get_brands,
-    create_brand,
-    update_brand,
+    create_brand_with_image,
+    update_brand_with_image,
     soft_delete_brand,
 )
 
@@ -46,16 +46,55 @@ def read_brand(brand_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=BaseResponse[BrandResponse], status_code=status.HTTP_201_CREATED)
-def create_brand_endpoint(brand_in: BrandCreate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
-    if get_brand_by_name(db, brand_in.name):
+async def create_brand_endpoint(
+    name: str = Form(...),
+    description: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_roles("ADMIN")),
+):
+    """
+    Tạo brand mới với upload ảnh trực tiếp
+    - name: Tên thương hiệu (required)
+    - description: Mô tả
+    - image: File ảnh (optional)
+    """
+    if get_brand_by_name(db, name):
         return BaseResponse(success=False, message="Tên thương hiệu đã tồn tại.", data=None)
-    obj = create_brand(db, brand_in, created_by=str(current_user.id) if current_user else None)
+    
+    obj = await create_brand_with_image(
+        db, 
+        name=name,
+        description=description,
+        image_file=image,
+        created_by=str(current_user.id) if current_user else None
+    )
     return BaseResponse(success=True, message="Thương hiệu đã được tạo.", data=obj)
 
 
 @router.put("/{brand_id}", response_model=BaseResponse[BrandResponse])
-def update_brand_endpoint(brand_id: str, brand_in: BrandUpdate, db: Session = Depends(get_db), current_user = Depends(require_roles("ADMIN")),):
-    obj = update_brand(db, brand_id, brand_in, updated_by=str(current_user.id) if current_user else None)
+async def update_brand_endpoint(
+    brand_id: str,
+    name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_roles("ADMIN")),
+):
+    """
+    Cập nhật brand với upload ảnh trực tiếp
+    - name: Tên thương hiệu
+    - description: Mô tả
+    - image: File ảnh mới (optional, nếu có sẽ thay thế ảnh cũ)
+    """
+    obj = await update_brand_with_image(
+        db,
+        brand_id=brand_id,
+        name=name,
+        description=description,
+        image_file=image,
+        updated_by=str(current_user.id) if current_user else None
+    )
     if not obj:
         return BaseResponse(success=False, message="Không tìm thấy thương hiệu.", data=None)
     return BaseResponse(success=True, message="Thương hiệu đã được cập nhật.", data=obj)

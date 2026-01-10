@@ -7,6 +7,7 @@ Create Date: 2026-01-07
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -17,10 +18,23 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Thêm cột sold vào bảng product_types
-    op.add_column('product_types', sa.Column('sold', sa.Integer(), nullable=True, server_default='0'))
+    # Kiểm tra xem cột sold đã tồn tại chưa
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = [col['name'] for col in inspector.get_columns('product_types')]
+    
+    if 'sold' not in columns:
+        # Chỉ thêm cột nếu chưa tồn tại
+        op.add_column('product_types', sa.Column('sold', sa.Integer(), nullable=True, server_default='0'))
 
 
 def downgrade() -> None:
-    # Xóa cột sold khỏi bảng product_types
-    op.drop_column('product_types', 'sold')
+    # Kiểm tra xem cột sold có tồn tại không
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = [col['name'] for col in inspector.get_columns('product_types')]
+    
+    if 'sold' in columns:
+        # Chỉ xóa cột nếu tồn tại
+        op.drop_column('product_types', 'sold')
+
