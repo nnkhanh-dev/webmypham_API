@@ -1,8 +1,10 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
+from fastapi import UploadFile
 from app.models.category import Category
 from app.repositories.category_repository import CategoryRepository
 from app.schemas.request.category import CategoryCreate, CategoryUpdate
+from app.services.upload_product_service import save_upload_file, get_upload_url
 from slugify import slugify
 
 
@@ -36,6 +38,49 @@ def create_category(db: Session, category_in: CategoryCreate, created_by: Option
     return repo.create(data, created_by=created_by)
 
 
+async def create_category_with_image(
+    db: Session,
+    name: str,
+    description: Optional[str] = None,
+    parent_id: Optional[str] = None,
+    image_file: Optional[UploadFile] = None,
+    created_by: Optional[str] = None
+) -> Category:
+    """
+    Tạo category mới với upload ảnh trực tiếp
+    """
+    repo = CategoryRepository(db)
+    
+    # Validate parent if provided
+    if parent_id and parent_id.strip():
+        parent = repo.get(parent_id)
+        if not parent:
+            raise ValueError("Danh mục cha không tồn tại.")
+    else:
+        parent_id = None
+    
+    # Upload image if provided
+    image_path = None
+    if image_file and image_file.filename:
+        filename = await save_upload_file(image_file, subfolder="categories")
+        image_path = get_upload_url(filename)
+    
+    # Prepare category data
+    data = {
+        "name": name,
+        "description": description,
+        "parent_id": parent_id,
+        "image_path": image_path
+    }
+    
+    # Generate slug
+    slug_base = _slugify(name)
+    slug = _make_unique_slug(db, Category, slug_base)
+    data["slug"] = slug
+    
+    return repo.create(data, created_by=created_by)
+
+
 def update_category(db: Session, category_id: str, category_in: CategoryUpdate, updated_by: Optional[str] = None) -> Optional[Category]:
     repo = CategoryRepository(db)
     data = category_in.dict(exclude_unset=True)
@@ -44,6 +89,56 @@ def update_category(db: Session, category_id: str, category_in: CategoryUpdate, 
         slug_base = _slugify(data.get("name"))
         data["slug"] = _make_unique_slug(db, Category, slug_base, exclude_id=category_id)
     return repo.update(category_id, data, updated_by=updated_by)
+
+
+async def update_category_with_image(
+    db: Session,
+    category_id: str,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    parent_id: Optional[str] = None,
+    image_file: Optional[UploadFile] = None,
+    updated_by: Optional[str] = None
+) -> Optional[Category]:
+    """
+    Cập nhật category với upload ảnh trực tiếp
+    """
+    repo = CategoryRepository(db)
+    
+    # Prepare update data
+    update_data = {}
+    
+    if name is not None:
+        update_data["name"] = name
+        # Regenerate slug if name changed
+        slug_base = _slugify(name)
+        update_data["slug"] = _make_unique_slug(db, Category, slug_base, exclude_id=category_id)
+    
+    if description is not None:
+        update_data["description"] = description
+    
+    if parent_id is not None:
+        if parent_id.strip():
+            # Validate parent exists
+            parent = repo.get(parent_id)
+            if not parent:
+                raise ValueError("Danh mục cha không tồn tại.")
+            update_data["parent_id"] = parent_id
+        else:
+            update_data["parent_id"] = None
+    
+    # Upload new image if provided
+    if image_file and image_file.filename:
+        filename = await save_upload_file(image_file, subfolder="categories")
+        image_path = get_upload_url(filename)
+        update_data["image_path"] = image_path
+    
+    if not update_data:
+        # No changes, return existing category
+        return repo.get(category_id)
+    
+    return repo.update(category_id, update_data, updated_by=updated_by)
+
 
 
 def delete_category(db: Session, category_id: str, deleted_by: Optional[str] = None) -> bool:
