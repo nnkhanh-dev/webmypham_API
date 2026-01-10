@@ -158,16 +158,7 @@ async def create_product(
     db: Session = Depends(get_db),
     current_user = Depends(require_roles("admin"))
 ):
-    """
-    Tạo sản phẩm mới với upload thumbnail (Admin only)
-    
-    - **name**: Tên sản phẩm (bắt buộc)
-    - **brand_id**: ID thương hiệu
-    - **category_id**: ID danh mục
-    - **description**: Mô tả sản phẩm
-    - **is_active**: Trạng thái (mặc định: true)
-    - **thumbnail**: File ảnh thumbnail (jpg, png, gif, webp)
-    """
+
     from app.services.upload_product_service import save_upload_file, get_upload_url
     
     # Xử lý upload thumbnail nếu có
@@ -350,3 +341,171 @@ def get_product_variants(product_id: str, db: Session = Depends(get_db)):
     )
     
     return BaseResponse(success=True, message="Lấy danh sách biến thể thành công.", data=result)
+
+
+# ==================== ProductType Management (Admin only) ====================
+
+from pydantic import BaseModel
+
+class ProductTypeCreateRequest(BaseModel):
+    """Request để tạo ProductType mới"""
+    product_id: str
+    volume: Optional[str] = None
+    type_value_id: Optional[str] = None
+    price: float
+    discount_price: Optional[float] = None
+    stock: int = 0
+    sold: int = 0
+    image_path: Optional[str] = None
+    status: Optional[str] = "active"  # active, inactive, out_of_stock
+    origin: Optional[str] = None
+    skin_type: Optional[str] = None
+    ingredients: Optional[str] = None
+    usage: Optional[str] = None
+
+
+class ProductTypeUpdateRequest(BaseModel):
+    """Request để cập nhật ProductType"""
+    volume: Optional[str] = None
+    type_value_id: Optional[str] = None
+    price: Optional[float] = None
+    discount_price: Optional[float] = None
+    stock: Optional[int] = None
+    sold: Optional[int] = None
+    image_path: Optional[str] = None
+    status: Optional[str] = None  # active, inactive, out_of_stock
+    origin: Optional[str] = None
+    skin_type: Optional[str] = None
+    ingredients: Optional[str] = None
+    usage: Optional[str] = None
+
+
+@router.post("/{product_id}/types", response_model=BaseResponse[dict], status_code=status.HTTP_201_CREATED)
+def create_product_type(
+    product_id: str,
+    data: ProductTypeCreateRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_roles("admin"))
+):
+  
+    # Kiểm tra product tồn tại
+    product = db.query(Product).filter(Product.id == product_id, Product.deleted_at.is_(None)).first()
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    
+    # Tạo ProductType mới
+    product_type = ProductType(
+        product_id=product_id,
+        volume=data.volume,
+        type_value_id=data.type_value_id,
+        price=data.price,
+        discount_price=data.discount_price,
+        stock=data.stock,
+        sold=data.sold,
+        image_path=data.image_path,
+        status=data.status or "active",
+        origin=data.origin,
+        skin_type=data.skin_type,
+        ingredients=data.ingredients,
+        usage=data.usage,
+        created_by=str(current_user.id)
+    )
+    
+    db.add(product_type)
+    db.commit()
+    db.refresh(product_type)
+    
+    return BaseResponse(
+        success=True,
+        message="Tạo biến thể sản phẩm thành công",
+        data={"id": str(product_type.id)}
+    )
+
+
+@router.put("/{product_id}/types/{type_id}", response_model=BaseResponse[dict])
+def update_product_type(
+    product_id: str,
+    type_id: str,
+    data: ProductTypeUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_roles("admin"))
+):
+    """
+    Cập nhật ProductType (biến thể) của sản phẩm (Admin only)
+    """
+    # Debug: Log thông tin
+    print(f"🔍 Updating ProductType - product_id: {product_id}, type_id: {type_id}")
+    
+    # Kiểm tra product type tồn tại
+    product_type = db.query(ProductType).filter(
+        ProductType.id == type_id,
+        ProductType.product_id == product_id,
+        ProductType.deleted_at.is_(None)
+    ).first()
+    
+    if not product_type:
+        # Debug: Kiểm tra xem có tồn tại nhưng bị xóa không
+        deleted_type = db.query(ProductType).filter(
+            ProductType.id == type_id,
+            ProductType.product_id == product_id
+        ).first()
+        
+        if deleted_type:
+            print(f"❌ ProductType exists but is deleted: {deleted_type.deleted_at}")
+        else:
+            print(f"❌ ProductType not found at all")
+            
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product type not found")
+    
+    print(f"✅ Found ProductType: {product_type.id}")
+    
+    # Cập nhật các trường
+    update_data = data.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(product_type, field, value)
+    
+    product_type.updated_by = str(current_user.id)
+    
+    db.commit()
+    db.refresh(product_type)
+    
+    return BaseResponse(
+        success=True,
+        message="Cập nhật biến thể sản phẩm thành công",
+        data={"id": str(product_type.id)}
+    )
+
+
+@router.delete("/{product_id}/types/{type_id}", response_model=BaseResponse[dict])
+def delete_product_type(
+    product_id: str,
+    type_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_roles("admin"))
+):
+    """
+    Xóa ProductType (biến thể) của sản phẩm (Admin only)
+    """
+    from datetime import datetime
+    
+    # Kiểm tra product type tồn tại
+    product_type = db.query(ProductType).filter(
+        ProductType.id == type_id,
+        ProductType.product_id == product_id,
+        ProductType.deleted_at.is_(None)
+    ).first()
+    
+    if not product_type:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product type not found")
+    
+    # Soft delete
+    product_type.deleted_at = datetime.utcnow()
+    product_type.deleted_by = str(current_user.id)
+    
+    db.commit()
+    
+    return BaseResponse(
+        success=True,
+        message="Xóa biến thể sản phẩm thành công",
+        data={"id": str(product_type.id)}
+    )

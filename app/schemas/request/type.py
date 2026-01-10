@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -62,3 +62,11 @@ class TypeValueInDBBase(TypeValueBase):
 
 class TypeValueResponse(TypeValueInDBBase):
     pass
+
+
+class TypeWithValuesResponse(TypeInDBBase):
+    """Type response with nested type_values"""
+    values: List[TypeValueResponse] = []  
+    
+    class Config:
+        orm_mode = True
