@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
 from sqlalchemy.orm import Session
 
 from app.dependencies.database import get_db
@@ -11,7 +11,9 @@ from app.services.category_service import (
     get_category,
     get_categories,
     create_category,
+    create_category_with_image,
     update_category,
+    update_category_with_image,
     delete_category,
     get_category_children,
     get_category_tree,
@@ -63,28 +65,64 @@ def read_category(category_id: str, db: Session = Depends(get_db)):
 # ==================== POST/PUT/DELETE (Admin only) ====================
 
 @router.post("/", response_model=BaseResponse[CategoryResponse], status_code=status.HTTP_201_CREATED)
-def create_category_endpoint(
-    category_in: CategoryCreate, 
+async def create_category_endpoint(
+    name: str = Form(...),
+    description: Optional[str] = Form(None),
+    parent_id: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db), 
     current_user = Depends(require_roles("admin"))
 ):
-    """Tạo danh mục mới (Admin only)"""
+    """
+    Tạo danh mục mới với upload ảnh trực tiếp (Admin only)
+    - name: Tên danh mục (required)
+    - description: Mô tả
+    - parent_id: ID danh mục cha (optional)
+    - image: File ảnh (optional)
+    """
     try:
-        obj = create_category(db, category_in, created_by=str(current_user.id) if current_user else None)
+        obj = await create_category_with_image(
+            db, 
+            name=name,
+            description=description,
+            parent_id=parent_id,
+            image_file=image,
+            created_by=str(current_user.id) if current_user else None
+        )
     except ValueError as e:
         return BaseResponse(success=False, message=str(e), data=None)
     return BaseResponse(success=True, message="Danh mục đã được tạo.", data=obj)
 
 
 @router.put("/{category_id}", response_model=BaseResponse[CategoryResponse])
-def update_category_endpoint(
-    category_id: str, 
-    category_in: CategoryUpdate, 
+async def update_category_endpoint(
+    category_id: str,
+    name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    parent_id: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db), 
     current_user = Depends(require_roles("admin"))
 ):
-    """Cập nhật danh mục (Admin only)"""
-    obj = update_category(db, category_id, category_in, updated_by=str(current_user.id) if current_user else None)
+    """
+    Cập nhật danh mục với upload ảnh trực tiếp (Admin only)
+    - name: Tên danh mục
+    - description: Mô tả
+    - parent_id: ID danh mục cha
+    - image: File ảnh mới (optional, nếu có sẽ thay thế ảnh cũ)
+    """
+    try:
+        obj = await update_category_with_image(
+            db,
+            category_id=category_id,
+            name=name,
+            description=description,
+            parent_id=parent_id,
+            image_file=image,
+            updated_by=str(current_user.id) if current_user else None
+        )
+    except ValueError as e:
+        return BaseResponse(success=False, message=str(e), data=None)
     if not obj:
         return BaseResponse(success=False, message="Không tìm thấy danh mục.", data=None)
     return BaseResponse(success=True, message="Danh mục đã được cập nhật.", data=obj)
