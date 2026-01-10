@@ -1,8 +1,17 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from datetime import datetime
+import pytz
 
 from app.models import Conversation, Message
+
+# Vietnam timezone (UTC+7)
+VN_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
+
+
+def get_vn_now():
+    """Get current time in Vietnam timezone"""
+    return datetime.now(VN_TZ)
 
 
 class ChatRepository:
@@ -45,12 +54,10 @@ class ChatRepository:
         conversation_id: str,
         admin_id: str,
     ):
-        self.db.query(Conversation).filter(
-            Conversation.id == conversation_id
-        ).update(
+        self.db.query(Conversation).filter(Conversation.id == conversation_id).update(
             {
                 "admin_id": admin_id,
-                "updated_at": datetime.utcnow(),
+                "updated_at": get_vn_now(),
             }
         )
         self.db.commit()
@@ -72,12 +79,10 @@ class ChatRepository:
 
         self.db.add(msg)
 
-        self.db.query(Conversation).filter(
-            Conversation.id == conversation_id
-        ).update(
+        self.db.query(Conversation).filter(Conversation.id == conversation_id).update(
             {
                 "last_message": message_text,
-                "updated_at": datetime.utcnow(),
+                "updated_at": get_vn_now(),
             }
         )
 
