@@ -18,6 +18,7 @@ from app.routers.v1.review import router as reviews_router
 from app.routers.v1.addresses import router as addresses_router
 from app.routers.v1.administrative import router as administrative_router
 from app.routers.v1.product import router as product_router
+from app.routers.v1.product_type import router as product_type_router
 from app.routers.v1.chat import router as chat_router
 from app.routers.v1.chat_controller import router as chat_router_controller
 from app.routers.v1.order import router as orders_router
@@ -94,6 +95,7 @@ app.include_router(reviews_router, prefix="/api/v1/reviews", tags=["reviews"])
 app.include_router(addresses_router, prefix="/api/v1/users/me/addresses", tags=["addresses"])
 app.include_router(administrative_router, prefix="/api/v1/administrative", tags=["administrative"])
 app.include_router(product_router, prefix="/api/v1/products", tags=["products"])
+app.include_router(product_type_router, prefix="/api/v1/products", tags=["Product Types"])
 app.include_router(chat_router_controller, prefix="/api/v1/chat", tags=["chat"])
 app.include_router(chat_router)
 
