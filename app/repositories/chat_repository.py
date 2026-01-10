@@ -70,6 +70,7 @@ class ChatRepository:
         conversation_id: str,
         sender_id: str,
         message_text: str,
+        is_from_admin: bool = False,
     ):
         msg = Message(
             conversation_id=conversation_id,
@@ -79,16 +80,27 @@ class ChatRepository:
 
         self.db.add(msg)
 
+        # Smart is_read logic:
+        # - Admin sends message → is_read = True (admin is viewing the conversation)
+        # - User sends message → is_read = False (needs admin attention)
         self.db.query(Conversation).filter(Conversation.id == conversation_id).update(
             {
                 "last_message": message_text,
                 "updated_at": get_vn_now(),
+                "is_read": is_from_admin,  # True if admin, False if user
             }
         )
 
         self.db.commit()
         self.db.refresh(msg)
         return msg
+    
+    def mark_as_read(self, conversation_id: str):
+        """Mark conversation as read"""
+        self.db.query(Conversation).filter(Conversation.id == conversation_id).update(
+            {"is_read": True}
+        )
+        self.db.commit()
 
     def get_messages_by_conversation(
         self,

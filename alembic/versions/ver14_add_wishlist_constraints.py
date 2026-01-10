@@ -1,7 +1,7 @@
 """add_wishlist_constraints
 
-Revision ID: v14
-Revises: v13
+Revision ID: ver14
+Revises: ver13
 Create Date: 2026-01-10 20:56:00.000000
 
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'v14'
-down_revision: Union[str, None] = 'v13'
+revision: str = 'ver14'
+down_revision: Union[str, None] = 'ver13'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
