@@ -29,6 +29,18 @@ class WishlistItemRepository(BaseRepository[WishlistItem]):
     def __init__(self, db: Session):
         super().__init__(WishlistItem, db)
 
+    def get_by_wishlist_and_product(
+        self, 
+        wishlist_id: str, 
+        product_type_id: str
+    ) -> Optional[WishlistItem]:
+        """Check if product already exists in wishlist"""
+        return self.db.query(WishlistItem).filter(
+            WishlistItem.wishlist_id == wishlist_id,
+            WishlistItem.product_type_id == product_type_id,
+            WishlistItem.deleted_at.is_(None)
+        ).first()
+
     def list_by_wishlist(self, wishlist_id: str, skip: int = 0, limit: int = 100) -> Tuple[List[WishlistItem], int]:
         query = self.db.query(WishlistItem).filter(
             WishlistItem.wishlist_id == wishlist_id,
@@ -39,3 +51,4 @@ class WishlistItemRepository(BaseRepository[WishlistItem]):
         total = query.count()
         items = query.offset(skip).limit(limit).all()
         return items, total
+
