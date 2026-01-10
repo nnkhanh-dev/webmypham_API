@@ -1,4 +1,4 @@
-from sqlalchemy import String, ForeignKey, Column, Text, DateTime, func
+from sqlalchemy import String, ForeignKey, Column, Text, DateTime, func, Boolean
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.models.mixins import AuditMixin
@@ -12,6 +12,9 @@ class Conversation(AuditMixin, Base):
     
     last_message = Column(Text)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Track whether admin has read this conversation
+    is_read = Column(Boolean, default=False, nullable=False, index=True)
 
     customer = relationship("User", foreign_keys=[customer_id], backref="customer_conversations")
     admin = relationship("User", foreign_keys=[admin_id], backref="admin_conversations")

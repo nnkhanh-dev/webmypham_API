@@ -77,6 +77,7 @@ def get_admin_conversations(
                 lastMessage=conv.last_message,
                 updatedAt=conv.updated_at,
                 isWaiting=conv.admin_id is None,
+                isRead=conv.is_read,  # Add read status
             )
         )
 
@@ -172,5 +173,40 @@ def claim_conversation(
     return BaseResponse(
         success=True,
         message="Conversation claimed successfully",
+        data={"conversationId": conversation_id},
+    )
+
+
+# ======================================================
+# ADMIN - Mark conversation as read
+# ======================================================
+@router.post(
+    "/admin/conversations/{conversation_id}/read",
+    response_model=BaseResponse[dict],
+)
+def mark_conversation_as_read(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("ADMIN")),
+):
+    """
+    ADMIN:
+    - Đánh dấu conversation đã đọc
+    """
+    repo = ChatRepository(db)
+    conv = repo.get_conversation_by_id(conversation_id)
+
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    # Mark as read
+    repo.mark_as_read(conversation_id)
+
+    return BaseResponse(
+        success=True,
+        message="Conversation marked as read",
         data={"conversationId": conversation_id},
     )

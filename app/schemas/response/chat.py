@@ -18,5 +18,6 @@ class AdminConversationResponse(BaseModel):
     lastMessage: Optional[str]
     updatedAt: datetime
     isWaiting: bool # True nếu chưa có admin_id
+    isRead: bool # True nếu admin đã đọc
 
     model_config = ConfigDict(from_attributes=True)
