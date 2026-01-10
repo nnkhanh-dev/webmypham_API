@@ -52,8 +52,14 @@ class Settings(BaseSettings):
     # --- Mail Configuration (SMTP) ---
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
-    SMTP_USER: str = ""
+    SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
+    SMTP_USE_SSL: bool = False
+    SMTP_USE_TLS: bool = True
+
+    # Email Sender
+    EMAIL_FROM: str = ""
+    EMAIL_FROM_NAME: str = ""
     
     # --- Google Auth Configuration ---
     GOOGLE_CLIENT_ID: str = ""

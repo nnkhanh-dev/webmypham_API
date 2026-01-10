@@ -1,7 +1,7 @@
 """refactor conversation 
 
-Revision ID: ver4
-Revises: ver3
+Revision ID: ver6
+Revises: ver5
 Create Date: 2026-01-01 23:16:17.292730
 
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
-revision: str = 'ver4'
-down_revision: Union[str, None] = 'ver3'
+revision: str = 'ver6'
+down_revision: Union[str, None] = 'ver5'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -4,8 +4,10 @@ from sqlalchemy import func, desc, asc, or_
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 from app.models.product import Product
+from app.models.productType import ProductType
 from app.models.orderDetail import OrderDetail
 from app.models.review import Review
+from app.models.wishlist import Wishlist
 from app.repositories.base import BaseRepository
 
 class ProductRepository(BaseRepository[Product]):
@@ -85,25 +87,20 @@ class ProductRepository(BaseRepository[Product]):
 
     def get_detail(self, product_id: str) -> Optional[Product]:
         """Lấy chi tiết sản phẩm theo ID"""
-        return self.db.query(Product).filter(
-            Product.id == product_id,
-            Product.deleted_at.is_(None),
-            Product.is_active == True
-        ).first()
-
-    def get_by_brand(self, brand_id: str, limit: int = 20, skip: int = 0) -> List[Product]:
-        """Lấy danh sách sản phẩm theo brand"""
-    def get_detail(self, id: str):
         return self.db.query(Product)\
             .options(
                 joinedload(Product.brand),
                 joinedload(Product.category),
                 joinedload(Product.product_types)
             )\
-            .filter(Product.id == id, Product.deleted_at.is_(None))\
-            .first()
+            .filter(
+                Product.id == product_id,
+                Product.deleted_at.is_(None),
+                Product.is_active == True
+            ).first()
 
     def get_by_brand(self, brand_id: str, limit: int = 20, skip: int = 0):
+        """Lấy danh sách sản phẩm theo brand"""
         return self.db.query(Product).filter(
             Product.brand_id == brand_id,
             Product.deleted_at.is_(None),
@@ -111,6 +108,7 @@ class ProductRepository(BaseRepository[Product]):
         ).options(joinedload(Product.product_types)).offset(skip).limit(limit).all()
 
     def get_by_category(self, category_id: str, limit: int = 20, skip: int = 0):
+        """Lấy danh sách sản phẩm theo category"""
         return self.db.query(Product).filter(
             Product.category_id == category_id,
             Product.deleted_at.is_(None),

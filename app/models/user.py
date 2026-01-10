@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
 from app.core.database import Base
 from app.models.mixins import AuditMixin
 from sqlalchemy.orm import relationship
@@ -17,8 +17,9 @@ class User(AuditMixin, Base):
     refresh_token = Column(Text, nullable=True)
     reset_password_token = Column(Text, nullable=True)
     version = Column(Integer, default=1)
+    email_confirmed = Column(Boolean, nullable=False, default=False)
 
     # relationship to roles via user_roles junction table
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     addresses = relationship("Address", back_populates="user")
-
+    email_verifications = relationship("EmailVerification", back_populates="user")

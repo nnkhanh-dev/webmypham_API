@@ -113,7 +113,7 @@ def get_products_by_brand(
     return BaseResponse(success=True, message="Lấy sản phẩm theo brand thành công.", data=products)
 
 
-@router.get("/category/{category_id}", response_model=BaseResponse[List[ProductDetailResponse]])
+@router.get("/category/{category_id}", response_model=BaseResponse[PaginatedResponse[ProductDetailResponse]])
 def get_products_by_category(
     category_id: str,
     limit: int = Query(20, ge=1, le=100),
@@ -121,8 +121,19 @@ def get_products_by_category(
     db: Session = Depends(get_db)
 ):
     service = ProductService(db)
-    products = service.get_by_category(category_id, limit=limit, skip=skip)
-    return BaseResponse(success=True, message="Lấy sản phẩm theo category thành công.", data=products)
+    products, total = service.search_with_filters(
+        category_id=category_id,
+        is_active=True,
+        skip=skip,
+        limit=limit
+    )
+    paginated_data = PaginatedResponse(
+        items=products,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
+    return BaseResponse(success=True, message="Lấy sản phẩm theo category thành công.", data=paginated_data)
 
 
 @router.get("/{product_id}", response_model=BaseResponse[ProductDetailResponse])

@@ -15,23 +15,9 @@ from app.repositories.role_repository import RoleRepository
 from app.schemas.request.auth import UserCreate
 from app.core.security import create_access_token
 from app.core.config import settings
+from app.services.email_verification_service import EmailVerificationService
 
-import bcrypt
-
-# Use bcrypt directly instead of passlib to avoid version compatibility issues
-def hash_password(password: str) -> str:
-    """Hash a password using bcrypt"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-def verify_password_bcrypt(plain: str, hashed: str) -> bool:
-    """Verify a password against a bcrypt hash"""
-    try:
-        return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
-    except Exception:
-        return False
-
-# Keep pwd_context for other uses (like Google OAuth random password)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 def create_tokens_for_user(user: User, db: Session) -> dict:
@@ -82,7 +68,7 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
 
 def verify_password(plain: str, hashed: str) -> bool:
     try:
-        return verify_password_bcrypt(plain, hashed)
+        return pwd_context.verify(plain, hashed)
     except Exception:
         return False
 
@@ -96,42 +82,44 @@ def create_user(
     user_repo = UserRepository(db)
     role_repo = RoleRepository(db)
 
-    hashed = hash_password(user_in.password)
+    hashed = pwd_context.hash(user_in.password)
     user_data = {
         "email": user_in.email,
         "password_hash": hashed,
         "first_name": user_in.first_name,
         "last_name": user_in.last_name,
         "phone_number": user_in.phone_number,
+        "email_confirmed": False,  # Mặc định chưa xác thực email
     }
     user = user_repo.create(user_data, created_by=created_by)
     role = role_repo.get_or_create(role_name, created_by=created_by)
     user = user_repo.assign_role(user, role.name)
+    
+    # Gửi mã xác thực email
+    try:
+        verification_service = EmailVerificationService(db)
+        verification_service.send_verification_code(user.id, is_resend=False)
+    except Exception as e:
+        # Log error nhưng không fail registration
+        print(f"Warning: Failed to send verification email: {str(e)}")
+    
     return user
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     user = get_user_by_email(db, email)
     if not user:
-        print(f"DEBUG: Không tìm thấy email {email}")
         return None
-    
-    password_hash = getattr(user, "password_hash", "")
-    print(f"DEBUG: Email: {email}")
-    print(f"DEBUG: Password input: {password}")
-    print(f"DEBUG: Password hash from DB: {password_hash[:50]}...")
-    
-    is_valid = verify_password(password, password_hash)
-    print(f"DEBUG: Password valid: {is_valid}")
-    
+    is_valid = verify_password(password, getattr(user, "password_hash", ""))
     if not is_valid:
-        # Test with bcrypt directly
-        try:
-            import bcrypt
-            direct_check = bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
-            print(f"DEBUG: Direct bcrypt check: {direct_check}")
-        except Exception as e:
-            print(f"DEBUG: Direct bcrypt error: {e}")
         return None
+    
+    # Strict Mode: Block unverified users from logging in
+    if not user.email_confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email chưa được xác thực. Vui lòng kiểm tra email và nhập mã xác thực."
+        )
+    
     return user
 
 
@@ -287,6 +275,7 @@ def authenticate_google_user(google_id_token: str, db: Session) -> User:
             "first_name": given_name,
             "last_name": family_name,
             "phone_number": None,
+            "email_confirmed": True,  # Google OAuth users auto-verified
         }
         user = user_repo.create(user_data, created_by="google_oauth")
         

@@ -1,7 +1,7 @@
 """update order table add address_id and voucher_id
 
 Revision ID: ver7
-Revises: ver6_add_sold_to_product_types
+Revises: ver6
 Create Date: 2026-01-06
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'ver7'
-down_revision = 'ver5'
+down_revision = 'ver6'
 branch_labels = None
 depends_on = None
 

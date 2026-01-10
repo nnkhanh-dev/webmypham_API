@@ -25,6 +25,14 @@ class UserResponse(BaseModel):
         orm_mode = True
 
 
+class RegisterResponse(BaseModel):
+    """Response cho registration - không có token"""
+    success: bool
+    message: str
+    email: EmailStr
+    verification_sent: bool
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str     
@@ -36,3 +44,21 @@ class TokenResponse(BaseModel):
     email: EmailStr
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+
+
+class VerifyEmailResponse(BaseModel):
+    """Response schema cho verify email"""
+    success: bool
+    message: str
+    email_confirmed: bool
+
+
+class VerificationStatusResponse(BaseModel):
+    """Response schema cho trạng thái verification"""
+    verified: bool
+    has_active_code: Optional[bool] = None
+    email: EmailStr
+    expires_at: Optional[str] = None
+    attempts_remaining: Optional[int] = None
+    resend_count: Optional[int] = None
+

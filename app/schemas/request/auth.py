@@ -47,6 +47,23 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class VerifyEmailRequest(BaseModel):
+    """Request để verify email (public endpoint)"""
+    email: EmailStr
+    code: str
+    
+    @validator("code")
+    def validate_code(cls, v: str) -> str:
+        if len(v) != 6 or not v.isdigit():
+            raise ValueError("Code must be exactly 6 digits")
+        return v
+
+
+class ResendVerificationRequest(BaseModel):
+    """Request để resend verification code (public endpoint)"""
+    email: EmailStr
+
+
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
