@@ -37,12 +37,26 @@ class ProductTypeResponse(BaseModel):
     origin: Optional[str] = None
     type_value_id: Optional[str] = None
     sold: Optional[int] = None
+    type_value: Optional["TypeValueResponse"] = None
     
     @computed_field
     @property
     def is_available(self) -> bool:
         """Kiểm tra còn hàng dựa trên stock"""
         return self.stock is not None and self.stock > 0
+
+
+# Thông tin type_value và type cho product type
+class TypeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+
+class TypeValueResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    type: Optional[TypeResponse] = None
 
 
 class ProductDetailResponse(BaseModel):

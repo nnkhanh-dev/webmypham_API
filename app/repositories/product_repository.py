@@ -5,10 +5,12 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 from app.models.product import Product
 from app.models.productType import ProductType
+from app.models.typeValue import TypeValue
 from app.models.orderDetail import OrderDetail
 from app.models.review import Review
 from app.models.wishlist import Wishlist
 from app.repositories.base import BaseRepository
+from app.schemas.response.product import ProductDetailResponse
 
 class ProductRepository(BaseRepository[Product]):
     def __init__(self, db: Session):
@@ -85,19 +87,23 @@ class ProductRepository(BaseRepository[Product]):
         
         return products, total_count
 
-    def get_detail(self, product_id: str) -> Optional[Product]:
-        """Lấy chi tiết sản phẩm theo ID"""
-        return self.db.query(Product)\
+    def get_detail(self, product_id: str):
+        product = self.db.query(Product)\
             .options(
                 joinedload(Product.brand),
                 joinedload(Product.category),
                 joinedload(Product.product_types)
+                    .joinedload(ProductType.type_value)
+                    .joinedload(TypeValue.type)
             )\
             .filter(
                 Product.id == product_id,
                 Product.deleted_at.is_(None),
                 Product.is_active == True
             ).first()
+        if not product:
+            return None
+        return ProductDetailResponse.model_validate(product)
 
     def get_by_brand(self, brand_id: str, limit: int = 20, skip: int = 0):
         """Lấy danh sách sản phẩm theo brand"""
