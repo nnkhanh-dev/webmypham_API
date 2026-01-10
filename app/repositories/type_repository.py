@@ -1,5 +1,5 @@
 from typing import Optional, List, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, asc, desc
 from app.models.type import Type
 from app.repositories.base import BaseRepository
@@ -23,7 +23,9 @@ class TypeRepository(BaseRepository[Type]):
         sort_by: str = "id",
         sort_dir: str = "desc",
     ) -> Tuple[List[Type], int]:
-        query = self.db.query(Type).filter(Type.deleted_at.is_(None))
+        query = self.db.query(Type).options(
+            joinedload(Type.values)  # Load type_values relationship
+        ).filter(Type.deleted_at.is_(None))
 
         if q:
             like = f"%{q}%"

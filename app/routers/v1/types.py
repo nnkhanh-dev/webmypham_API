@@ -9,6 +9,7 @@ from app.schemas.request.type import (
     TypeCreate,
     TypeUpdate,
     TypeResponse,
+    TypeWithValuesResponse,
 )
 from app.schemas.response.base import BaseResponse
 from app.services.type_service import (
@@ -22,7 +23,7 @@ from app.services.type_service import (
 router = APIRouter()
 
 
-@router.get("/", response_model=BaseResponse[List[TypeResponse]])
+@router.get("/", response_model=BaseResponse[List[TypeWithValuesResponse]])
 def list_types(params: dict = Depends(get_pagination), db: Session = Depends(get_db), current_user = Depends(require_roles("CLIENT", "ADMIN"))):
     items, total = get_types(
         db,

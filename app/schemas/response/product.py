@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 from typing import List, Optional
 
 
@@ -36,6 +36,13 @@ class ProductTypeResponse(BaseModel):
     skin_type: Optional[str] = None
     origin: Optional[str] = None
     type_value_id: Optional[str] = None
+    sold: Optional[int] = None
+    
+    @computed_field
+    @property
+    def is_available(self) -> bool:
+        """Kiểm tra còn hàng dựa trên stock"""
+        return self.stock is not None and self.stock > 0
 
 
 class ProductDetailResponse(BaseModel):
