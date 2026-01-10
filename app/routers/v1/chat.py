@@ -44,9 +44,14 @@ async def chat_websocket(
         is_admin = False
         user_role = "USER"
         if current_user and current_user.roles:
+            # Check if user has ADMIN role
             is_admin = any(role.name == "ADMIN" for role in current_user.roles)
-            # Get first role name for tracking
-            user_role = current_user.roles[0].name if current_user.roles else "USER"
+            
+            # 🔥 FIX: Prioritize ADMIN role for websocket tracking
+            if is_admin:
+                user_role = "ADMIN"
+            else:
+                user_role = current_user.roles[0].name if current_user.roles else "USER"
         
         # Track user role for broadcasting
         manager.set_user_role(user_id, user_role)
