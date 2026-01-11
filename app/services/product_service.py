@@ -5,6 +5,31 @@ from app.schemas.request.product import ProductCreateRequest, ProductUpdateReque
 
 
 class ProductService:
+    def get_top_discounted_products(self, limit: int = 6):
+        from app.repositories.product_type_repository import ProductTypeRepository
+        from app.models.product import Product
+        from app.schemas.response.product import ProductDetailResponse, ProductTypeResponse
+        # Lấy các biến thể giảm giá lớn nhất
+        top_types = ProductTypeRepository.get_top_discounted_with_sold(self.repo.db, limit * 2)
+        # Gom theo product, lấy biến thể giảm giá nhất cho mỗi product
+        product_map = {}
+        for pt, discount_percent, sold in top_types:
+            prod_id = pt.product_id
+            if prod_id not in product_map or product_map[prod_id][1] < discount_percent:
+                product_map[prod_id] = (pt, discount_percent, sold)
+        # Lấy thông tin sản phẩm
+        products = self.repo.db.query(Product).filter(Product.id.in_(product_map.keys())).all()
+        result = []
+        for prod in products:
+            pt, discount_percent, sold = product_map[prod.id]
+            result.append({
+                "product": ProductDetailResponse.model_validate(prod),
+                "product_type": ProductTypeResponse.model_validate(pt),
+                "discount_percent": round(discount_percent, 2) if discount_percent is not None else 0,
+                "sold": sold
+            })
+        # Trả về tối đa limit sản phẩm
+        return result[:limit]
     def __init__(self, db: Session):
         self.repo = ProductRepository(db)
 

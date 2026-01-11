@@ -28,6 +28,24 @@ from app.repositories.product_repository import ProductRepository
 
 router = APIRouter()
 
+# API lấy 6 sản phẩm có biến thể giảm giá lớn nhất
+from app.services.product_service import ProductService
+from app.schemas.response.product import ProductDetailResponse
+from app.schemas.response.base import BaseResponse
+from typing import List
+
+@router.get("/top-discounted", response_model=BaseResponse[List[dict]])
+def get_top_discounted_products(db: Session = Depends(get_db), limit: int = 6):
+    """
+    Lấy 6 sản phẩm có biến thể giảm giá lớn nhất, trả về thông tin sản phẩm, biến thể giảm giá nhất, phần trăm giảm giá, số lượng đã bán
+    """
+    result = ProductService(db).get_top_discounted_products(limit)
+    return BaseResponse(
+        success=True,
+        message="Lấy top sản phẩm giảm giá lớn nhất thành công",
+        data=result
+    )
+
 
 class SortOrder(str, Enum):
     asc = "asc"
