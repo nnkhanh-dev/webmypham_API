@@ -9,6 +9,24 @@ from app.schemas.response.base import BaseResponse
 router = APIRouter()
 
 
+# API lấy 6 sản phẩm giảm giá lớn nhất
+from app.schemas.response.product import ProductTypeResponse
+from typing import List
+
+@router.get("/top-discounted", response_model=BaseResponse[List[dict]])
+def get_top_discounted_product_types(db: Session = Depends(get_db), limit: int = 6):
+    """
+    Lấy 6 product_types có phần trăm giảm giá lớn nhất, trả về phần trăm giảm giá và số lượng đã bán
+    """
+    result = ProductTypeService.get_top_discounted_with_sold(db, limit)
+    # Trả về dạng: [{product_type: ..., discount_percent: ..., sold: ...}]
+    return BaseResponse(
+        success=True,
+        message="Lấy top sản phẩm giảm giá lớn nhất thành công",
+        data=result
+    )
+
+
 @router.get(
     "/{product_id}/types/{variant_id}",
     response_model=BaseResponse[ProductTypeDetailResponse]
