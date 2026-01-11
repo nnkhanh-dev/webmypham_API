@@ -1,6 +1,6 @@
 """add_description_to_types
 
-Revision ID: v13
+Revision ID: ver13
 Revises: ver12
 Create Date: 2026-01-10 17:08:17.871282
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'v13'
+revision: str = 'ver13'
 down_revision: Union[str, None] = 'ver12'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

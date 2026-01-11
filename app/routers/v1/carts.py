@@ -173,12 +173,10 @@ def update_item(cart_id: str, item_id: str, item_in: CartItemUpdate, db: Session
         return BaseResponse(success=True, message="Sản phẩm trong giỏ hàng đã được cập nhật.", data=obj)
     except HTTPException as e:
         detail = getattr(e, "detail", "")
-        if "already exists in cart" in detail:
-            return BaseResponse(success=False, message="Biến thể này đã có trong giỏ hàng. Vui lòng cập nhật số lượng hoặc xóa sản phẩm trùng.", data=None)
-        elif "not found" in detail.lower():
+        if "not found" in detail.lower():
             return BaseResponse(success=False, message="Không tìm thấy sản phẩm hoặc biến thể.", data=None)
-        elif "insufficient stock" in detail.lower():
-            return BaseResponse(success=False, message=f"Không đủ tồn kho.", data=None)
+        elif "Không đủ tồn kho" in detail or "insufficient stock" in detail.lower():
+            return BaseResponse(success=False, message=detail, data=None)
         else:
             return BaseResponse(success=False, message=f"Đã xảy ra lỗi: {detail}.", data=None)
     except Exception:

@@ -75,6 +75,7 @@ class ChatService:
             conversation_id=conv.id,
             sender_id=self.user_id,
             message_text=text,
+            is_from_admin=self.is_admin,  # Pass admin status to repository
         )
 
         # ===== RESPONSE =====

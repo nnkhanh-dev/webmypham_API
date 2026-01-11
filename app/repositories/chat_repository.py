@@ -1,8 +1,17 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from datetime import datetime
+import pytz
 
 from app.models import Conversation, Message
+
+# Vietnam timezone (UTC+7)
+VN_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
+
+
+def get_vn_now():
+    """Get current time in Vietnam timezone"""
+    return datetime.now(VN_TZ)
 
 
 class ChatRepository:
@@ -45,12 +54,10 @@ class ChatRepository:
         conversation_id: str,
         admin_id: str,
     ):
-        self.db.query(Conversation).filter(
-            Conversation.id == conversation_id
-        ).update(
+        self.db.query(Conversation).filter(Conversation.id == conversation_id).update(
             {
                 "admin_id": admin_id,
-                "updated_at": datetime.utcnow(),
+                "updated_at": get_vn_now(),
             }
         )
         self.db.commit()
@@ -63,6 +70,7 @@ class ChatRepository:
         conversation_id: str,
         sender_id: str,
         message_text: str,
+        is_from_admin: bool = False,
     ):
         msg = Message(
             conversation_id=conversation_id,
@@ -72,18 +80,27 @@ class ChatRepository:
 
         self.db.add(msg)
 
-        self.db.query(Conversation).filter(
-            Conversation.id == conversation_id
-        ).update(
+        # Smart is_read logic:
+        # - Admin sends message → is_read = True (admin is viewing the conversation)
+        # - User sends message → is_read = False (needs admin attention)
+        self.db.query(Conversation).filter(Conversation.id == conversation_id).update(
             {
                 "last_message": message_text,
-                "updated_at": datetime.utcnow(),
+                "updated_at": get_vn_now(),
+                "is_read": is_from_admin,  # True if admin, False if user
             }
         )
 
         self.db.commit()
         self.db.refresh(msg)
         return msg
+    
+    def mark_as_read(self, conversation_id: str):
+        """Mark conversation as read"""
+        self.db.query(Conversation).filter(Conversation.id == conversation_id).update(
+            {"is_read": True}
+        )
+        self.db.commit()
 
     def get_messages_by_conversation(
         self,
