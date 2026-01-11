@@ -155,20 +155,34 @@ def get_order_detail(
             detail="Không tìm thấy đơn hàng."
         )
     
-    # --- Xử lý hết hạn thanh toán SePay ---
+    # --- Xử lý hết hạn thanh toán SePay (Lazy check - không cần cronjob) ---
     payment_expires_at = None
     remaining_seconds = None
     
     if order.status == "pending" and order.payment_method == "SEPAY":
         checkout_service = CheckoutService(db)
+        
+        # Check if payment has expired and auto-cancel if needed
         if checkout_service.is_payment_expired(order):
-            checkout_service.update_payment_status(order.id, "cancelled")
-            # Cập nhật trạng thái cục bộ để response trả về đúng
+            # Update payment status
+            if order.payment:
+                order.payment.status = "cancelled"
+            
+            # Update order status to cancelled
             order.status = "cancelled"
+            
+            # Restore stock
+            checkout_service._restore_stock(order)
+            
+            # Commit changes
+            db.commit()
+            db.refresh(order)
         else:
+            # Payment still valid, calculate remaining time
             if order.created_at:
                 payment_expires_at = order.created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
                 remaining_seconds = checkout_service.get_payment_remaining_time(order)
+    
     
     # Query ProductType để lấy thông tin product
     pt_ids = [d.product_type_id for d in (order.details or [])]
@@ -197,7 +211,9 @@ def get_order_detail(
             "method": order.payment.method,
             "status": order.payment.status,
             "amount": order.payment.amount,
-            "transaction_id": order.payment.transaction_id
+            "transaction_id": order.payment.transaction_id,
+            "created_at": order.payment.created_at,
+            "updated_at": order.payment.updated_at
         }
     
     order_data = {
@@ -286,13 +302,33 @@ def update_order_status(
     - **new_status**: pending, confirmed, processing, shipping, delivered, completed, cancelled
     """
     from app.models.order import Order
+    from app.services.order_state_machine import validate_transition, requires_payment_confirmation
     
-    # Lấy đơn hàng
-    order = db.query(Order).filter(Order.id == order_id, Order.deleted_at.is_(None)).first()
+    # Lấy đơn hàng với payment info
+    order = db.query(Order).options(
+        joinedload(Order.payment)
+    ).filter(Order.id == order_id, Order.deleted_at.is_(None)).first()
+    
     if not order:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Không tìm thấy đơn hàng."
+        )
+    
+    # Check if payment confirmation is required (for SePay orders)
+    blocked, error_msg = requires_payment_confirmation(order, new_status.value)
+    if blocked:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg
+        )
+    
+    # Validate state transition
+    error_msg = validate_transition(order.status, new_status.value)
+    if error_msg:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg
         )
     
     # Cập nhật trạng thái
@@ -342,7 +378,9 @@ def update_order_status(
             "method": updated_order.payment.method,
             "status": updated_order.payment.status,
             "amount": updated_order.payment.amount,
-            "transaction_id": updated_order.payment.transaction_id
+            "transaction_id": updated_order.payment.transaction_id,
+            "created_at": updated_order.payment.created_at,
+            "updated_at": updated_order.payment.updated_at
         }
     
     order_data = {

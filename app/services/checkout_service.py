@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import uuid
 
 from app.models.order import Order
@@ -338,15 +338,9 @@ class CheckoutService:
         
         if not order.created_at:
             return False
-        
-        # Đảm bảo created_at có timezone, nếu không thì gán UTC
-        created_at = order.created_at
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        
-        expire_time = created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
-        now = datetime.now(timezone.utc)
-        return now > expire_time
+            
+        expire_time = order.created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
+        return datetime.now() > expire_time
 
     def get_payment_remaining_time(self, order: Order) -> int:
         """Lấy thời gian còn lại để thanh toán (giây)"""
@@ -355,31 +349,36 @@ class CheckoutService:
         
         if not order.created_at:
             return 0
-        
-        # Đảm bảo created_at có timezone, nếu không thì gán UTC
-        created_at = order.created_at
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        
-        expire_time = created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
-        now = datetime.now(timezone.utc)
-        remaining = (expire_time - now).total_seconds()
+            
+        expire_time = order.created_at + timedelta(minutes=PAYMENT_TIMEOUT_MINUTES)
+        remaining = (expire_time - datetime.now()).total_seconds()
         return max(0, int(remaining))
 
     def expire_pending_payments(self) -> int:
         """Hủy các đơn hàng SEPAY đã quá thời gian thanh toán"""
-        expired_orders = self.order_repo.get_pending_sepay_expired(PAYMENT_TIMEOUT_MINUTES)
+        from app.models.order import Order
+        from app.models.payment import Payment
+        
+        # Tìm các order pending với payment method SEPAY đã quá hạn
+        orders = self.db.query(Order).filter(
+            Order.status == "pending",
+            Order.payment_method == "SEPAY",
+            Order.deleted_at.is_(None)
+        ).all()
         
         count = 0
-        for order in expired_orders:
-            order.status = "cancelled"
-            
-            payment = self.payment_repo.get_pending_by_order_id(order.id)
-            if payment:
-                payment.status = "cancelled"
-            
-            self._restore_stock(order)
-            count += 1
+        for order in orders:
+            if self.is_payment_expired(order):
+                # Update payment status
+                if order.payment:
+                    order.payment.status = "cancelled"
+                
+                # Update order status to cancelled
+                order.status = "cancelled"
+                
+                # Restore stock
+                self._restore_stock(order)
+                count += 1
         
         if count > 0:
             self.db.commit()
