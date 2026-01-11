@@ -77,10 +77,25 @@ def update_cart_item(db: Session, item_id: str, item_in: CartItemUpdate, updated
         # Check if changing to an item that already exists in cart (merge or reject)
         existing_same_type = repo.get_by_cart_and_product(item.cart_id, data["product_type_id"])
         if existing_same_type and existing_same_type.id != item_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail="Product variant already exists in cart. Please update quantity of existing item or remove it first."
-            )
+            # Calculate combined quantity
+            new_qty = int(data.get("quantity", item.quantity))
+            combined_qty = existing_same_type.quantity + new_qty
+            
+            # Validate combined quantity against stock
+            if new_product_type.stock is not None and combined_qty > new_product_type.stock:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, 
+                    detail=f"Không đủ tồn kho: yêu cầu {combined_qty}, còn {new_product_type.stock}"
+                )
+            
+            # Update existing item with combined quantity
+            repo.update(existing_same_type.id, {"quantity": combined_qty}, updated_by=updated_by)
+            
+            # Delete original item (it's been merged)
+            repo.delete(item_id, deleted_by=updated_by)
+            
+            # Return the merged item
+            return repo.get(existing_same_type.id)
         
         # Validate stock for new product type
         new_qty = int(data.get("quantity", item.quantity))
