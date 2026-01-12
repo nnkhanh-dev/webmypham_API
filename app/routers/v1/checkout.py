@@ -42,7 +42,7 @@ def preview_checkout(
         preview = service.preview_order(
             items=request.items,
             voucher_code=request.voucher_code,
-            address_id=request.address_id
+            user_id=current_user.id
         )
         return BaseResponse(
             success=True,
@@ -73,7 +73,8 @@ def validate_voucher(
     service = CheckoutService(db)
     valid, discount_amount, message = service.validate_voucher(
         code=request.code,
-        subtotal=request.subtotal
+        subtotal=request.subtotal,
+        user_id=current_user.id
     )
     
     return BaseResponse(
