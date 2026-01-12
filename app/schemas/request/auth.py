@@ -82,3 +82,35 @@ class GoogleLoginRequest(BaseModel):
 class AdminResetPasswordRequest(BaseModel):
     """Request schema cho admin reset password user"""
     user_id: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Request để yêu cầu reset password (gửi email kèm token)"""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request để reset password với token từ email"""
+    token: str
+    new_password: str
+    confirm_password: str
+    
+    @validator("new_password")
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Mật khẩu phải có ít nhất 8 ký tự")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Mật khẩu phải có ít nhất 1 chữ hoa")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Mật khẩu phải có ít nhất 1 chữ thường")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Mật khẩu phải có ít nhất 1 chữ số")
+        if not re.search(r"[^A-Za-z0-9]", v):
+            raise ValueError("Mật khẩu phải có ít nhất 1 ký tự đặc biệt")
+        return v
+    
+    @validator("confirm_password")
+    def passwords_match(cls, v: str, values: dict) -> str:
+        if "new_password" in values and v != values["new_password"]:
+            raise ValueError("Mật khẩu xác nhận không khớp")
+        return v

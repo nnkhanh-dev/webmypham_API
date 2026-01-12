@@ -62,4 +62,13 @@ class UserRepository(BaseRepository[User]):
             self.db.commit()
             self.db.refresh(user)
         return user
+    
+    def get_by_reset_token(self, token: str) -> Optional[User]:
+        """Lấy user theo reset password token (không bao gồm deleted)"""
+        return self.db.query(User).filter(
+            and_(
+                User.reset_password_token == token,
+                User.deleted_at.is_(None)
+            )
+        ).first()
 

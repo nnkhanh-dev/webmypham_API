@@ -69,3 +69,15 @@ class AdminResetPasswordResponse(BaseModel):
     message: str
     email: EmailStr
 
+
+class ForgotPasswordResponse(BaseModel):
+    """Response schema cho forgot password request"""
+    success: bool
+    message: str
+    email: EmailStr
+
+
+class ResetPasswordResponse(BaseModel):
+    """Response schema cho reset password"""
+    success: bool
+    message: str

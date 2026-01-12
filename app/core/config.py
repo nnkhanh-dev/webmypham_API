@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     UVICORN_HOST: str = "0.0.0.0"
     UVICORN_PORT: int = 8000
     RELOAD: bool = True
+    FRONTEND_URL: str = "http://localhost:5173"  # URL frontend cho reset password link
 
     # --- CORS Configuration ---
     CORS_ORIGINS: Any = [] 

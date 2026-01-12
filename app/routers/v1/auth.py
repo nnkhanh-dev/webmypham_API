@@ -12,7 +12,9 @@ from app.schemas.request.auth import (
     GoogleLoginRequest,
     VerifyEmailRequest,
     ResendVerificationRequest,
-    AdminResetPasswordRequest
+    AdminResetPasswordRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest
 )
 from app.schemas.response.auth import (
     UserResponse, 
@@ -20,7 +22,9 @@ from app.schemas.response.auth import (
     VerifyEmailResponse,
     VerificationStatusResponse,
     RegisterResponse,
-    AdminResetPasswordResponse
+    AdminResetPasswordResponse,
+    ForgotPasswordResponse,
+    ResetPasswordResponse
 )
 from app.schemas.response.base import BaseResponse
 from app.services.auth_service import (
@@ -187,6 +191,98 @@ def admin_reset_user_password(
         success=True,
         message=message,
         email=target_user.email
+    )
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    API yêu cầu reset password (PUBLIC - không cần token).
+    
+    - **email**: Email đã đăng ký
+    - Tạo reset token và gửi email kèm link reset
+    - Link reset có dạng: http://localhost:5173/reset-password?token=abc123
+    - Token chỉ sử dụng được 1 lần
+    - Sau khi reset thành công, token sẽ bị xóa
+    """
+    from app.services.password_reset_service import PasswordResetService
+    
+    service = PasswordResetService(db)
+    success, message = service.request_password_reset(request.email)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=message
+        )
+    
+    return ForgotPasswordResponse(
+        success=True,
+        message=message,
+        email=request.email
+    )
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    API reset password với token (PUBLIC - không cần token).
+    
+    - **token**: Token từ email
+    - **new_password**: Mật khẩu mới
+    - **confirm_password**: Xác nhận mật khẩu mới
+    - Verify token, update password, xóa token
+    - Xóa refresh token (bắt user login lại)
+    - Nếu token không hợp lệ/đã hết hạn -> trả lỗi 400
+    """
+    from app.services.password_reset_service import PasswordResetService
+    
+    service = PasswordResetService(db)
+    success, message = service.reset_password(
+        token=request.token,
+        new_password=request.new_password
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+    
+    return ResetPasswordResponse(
+        success=True,
+        message=message
+    )
+
+
+@router.get("/verify-reset-token/{token}", response_model=BaseResponse[str])
+def verify_reset_token(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    API kiểm tra token reset password có hợp lệ không (PUBLIC).
+    
+    - **token**: Token từ URL
+    - Trả về success=True nếu token hợp lệ
+    - Trả về success=False nếu token không hợp lệ/đã hết hạn
+    - Frontend sử dụng API này khi load trang reset password
+    """
+    from app.services.password_reset_service import PasswordResetService
+    
+    service = PasswordResetService(db)
+    is_valid, message, _ = service.verify_reset_token(token)
+    
+    return BaseResponse(
+        success=is_valid,
+        message=message,
+        data=message
     )
 
 
