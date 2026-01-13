@@ -105,6 +105,15 @@ def create_or_update_unverified_user(
                 detail="Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập."
             )
         
+        # Kiểm tra phone number trùng với user khác (không phải chính user này)
+        if user_in.phone_number:
+            phone_user = user_repo.get_by_phone(user_in.phone_number)
+            if phone_user and phone_user.id != existing_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Số điện thoại này đã được sử dụng bởi tài khoản khác."
+                )
+        
         # Email tồn tại nhưng chưa verified -> cập nhật thông tin
         hashed = pwd_context.hash(user_in.password)
         existing_user.password_hash = hashed
@@ -125,6 +134,15 @@ def create_or_update_unverified_user(
             print(f"Warning: Failed to send verification email: {str(e)}")
         
         return existing_user, False  # Không phải user mới
+    
+    # Kiểm tra phone number đã tồn tại chưa (cho user mới)
+    if user_in.phone_number:
+        phone_user = user_repo.get_by_phone(user_in.phone_number)
+        if phone_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Số điện thoại này đã được sử dụng. Vui lòng sử dụng số khác."
+            )
     
     # Email chưa tồn tại -> tạo mới
     hashed = pwd_context.hash(user_in.password)
