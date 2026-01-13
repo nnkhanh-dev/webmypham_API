@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from core.config import settings
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.middleware import AuthMiddleware,TraceIdMiddleware
@@ -66,12 +67,7 @@ app.add_middleware(TraceIdMiddleware)
 # 3. CORS middleware (executes first - MUST BE LAST ADDED)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",      # Vite dev server
-        "http://localhost:3000",      # Alternative dev server
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

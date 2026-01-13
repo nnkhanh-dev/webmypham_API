@@ -23,7 +23,7 @@ class CheckoutService:
         self.order_repo = OrderRepository(db)
         self.payment_repo = PaymentRepository(db)
 
-    def validate_voucher(self, code: str, subtotal: float) -> Tuple[bool, float, str]:
+    def validate_voucher(self, code: str, subtotal: float, user_id: str = None) -> Tuple[bool, float, str]:
         """
         Validate mã voucher
         Returns: (valid, discount_amount, message)
@@ -41,6 +41,21 @@ class CheckoutService:
 
         if voucher.min_order_amount and subtotal < voucher.min_order_amount:
             return False, 0, f"Đơn hàng tối thiểu {voucher.min_order_amount:,.0f}₫ để sử dụng mã này."
+
+        # Kiểm tra limit (số lần tối đa mỗi user được dùng voucher)
+        if voucher.limit and user_id:
+            from app.models.order import Order
+            
+            # Đếm số lần user đã dùng voucher này (chỉ đếm order không bị cancelled)
+            usage_count = self.db.query(Order).filter(
+                Order.voucher_id == voucher.id,
+                Order.user_id == user_id,
+                Order.status != 'cancelled',
+                Order.deleted_at.is_(None)
+            ).count()
+            
+            if usage_count >= voucher.limit:
+                return False, 0, f"Bạn đã sử dụng mã này {usage_count}/{voucher.limit} lần."
 
 
         # Tính discount_amount từ phần trăm (10 = 10%)
@@ -62,7 +77,7 @@ class CheckoutService:
         self,
         items: List[CheckoutItemRequest],
         voucher_code: Optional[str] = None,
-        address_id: Optional[str] = None
+        user_id: Optional[str] = None
     ) -> dict:
         """Xem trước đơn hàng trước khi checkout"""
         checkout_items = []
@@ -101,7 +116,7 @@ class CheckoutService:
         discount = 0
         voucher_info = None
         if voucher_code:
-            valid, discount_amount, message = self.validate_voucher(voucher_code, subtotal)
+            valid, discount_amount, message = self.validate_voucher(voucher_code, subtotal, user_id)
             if valid:
                 discount = discount_amount
                 voucher = self.db.query(Voucher).filter(Voucher.code == voucher_code).first()
@@ -120,8 +135,7 @@ class CheckoutService:
             "discount": discount,
             "shipping_fee": shipping_fee,
             "total": total,
-            "voucher": voucher_info,
-            "address_id": address_id
+            "voucher": voucher_info
         }
 
     def create_order(
@@ -144,7 +158,7 @@ class CheckoutService:
             raise Exception("Địa chỉ giao hàng không hợp lệ.")
 
         # Tính toán preview
-        preview = self.preview_order(items, voucher_code)
+        preview = self.preview_order(items, voucher_code, user_id)
 
         # Lấy voucher_id nếu có
         voucher_id = None

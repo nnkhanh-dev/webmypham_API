@@ -58,6 +58,30 @@ def list_vouchers(
         sort_dir=sort_dir,
     )
     
+    # Filter vouchers by limit (only show vouchers user can still use)
+    from app.models.order import Order
+    filtered_items = []
+    for voucher in items:
+        # Check if voucher has limit
+        if voucher.limit:
+            # Count how many times current user has used this voucher
+            usage_count = db.query(Order).filter(
+                Order.voucher_id == voucher.id,
+                Order.user_id == current_user.id,
+                Order.status != 'cancelled',
+                Order.deleted_at.is_(None)
+            ).count()
+            
+            # Only include if user hasn't reached limit
+            if usage_count < voucher.limit:
+                filtered_items.append(voucher)
+        else:
+            # No limit, always include
+            filtered_items.append(voucher)
+    
+    items = filtered_items
+    total = len(filtered_items)
+    
     paginated_data = VoucherPaginatedResponse(
         items=items,
         total=total,
