@@ -130,16 +130,16 @@ def create_or_update_unverified_user(
     if not existing_user:
         return _create_new_user(db, user_in, role_name, created_by)
     
-    # CASE 2: Email đã verified -> Không cho đăng ký lại
+    # CASE 2: Email đã bị soft delete -> Restore
+    if existing_user.deleted_at is not None:
+        return _restore_deleted_user(db, existing_user, user_in)
+    
+    # CASE 3: Email đã verified -> Không cho đăng ký lại
     if existing_user.email_confirmed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập."
         )
-    
-    # CASE 3: Email đã bị soft delete -> Restore
-    if existing_user.deleted_at is not None:
-        return _restore_deleted_user(db, existing_user, user_in)
     
     # CASE 4: Email chưa verified -> Update thông tin
     return _update_unverified_user(db, existing_user, user_in)
