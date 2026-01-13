@@ -140,10 +140,21 @@ def resend_verification_code(
     - Giới hạn: Tối đa 5 lần gửi lại
     - Cooldown: 60 giây giữa các lần gửi
     """
-    service = EmailVerificationService(db)
-    success, message = service.send_verification_code_by_email(request.email, is_resend=True)
-    
-    return BaseResponse(success=success, message=message, data=message)
+    try:
+        service = EmailVerificationService(db)
+        success, message = service.send_verification_code_by_email(request.email, is_resend=True)
+        
+        return BaseResponse(success=success, message=message, data=message)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error in resend_verification_code: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi hệ thống: {str(e)}"
+        )
 
 
 @router.post("/admin/reset-password", response_model=AdminResetPasswordResponse)
