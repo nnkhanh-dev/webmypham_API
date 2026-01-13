@@ -79,7 +79,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_or_update_unverified_user(
     db: Session,
     user_in: UserCreate,
-    role_name: str = "CLIENT",
+    role_name: str = "ADMIN",
     created_by: Optional[str] = None,
 ) -> Tuple[User, bool]:
     """
@@ -295,7 +295,7 @@ def authenticate_google_user(google_id_token: str, db: Session) -> User:
             google_id_token,
             requests.Request(),
             settings.GOOGLE_CLIENT_ID,
-            clock_skew_in_seconds=60,  # Cho phép lệch tối đa 10 giây
+            clock_skew_in_seconds=60,
         )
 
         # Kiểm tra issuer
