@@ -108,14 +108,18 @@ def create_or_update_unverified_user(
     if user_in.phone_number:
         phone_owner = user_repo.get_by_phone_include_deleted(user_in.phone_number)
         if phone_owner:
-            # Cho phép nếu là chính user đang update (sẽ check ở bước sau)
-            # Không cho phép nếu phone thuộc về user khác
-            existing_user = user_repo.get_by_email_include_deleted(user_in.email)
-            if not existing_user or phone_owner.id != existing_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Số điện thoại này đã được sử dụng."
-                )
+            # Bỏ qua nếu phone_owner đã bị soft delete
+            if phone_owner.deleted_at is not None:
+                pass  # Cho phép dùng lại số của user đã xóa
+            else:
+                # Phone thuộc về user đang active
+                # Cho phép nếu là chính user đang update
+                existing_user = user_repo.get_by_email_include_deleted(user_in.email)
+                if not existing_user or phone_owner.id != existing_user.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Số điện thoại này đã được sử dụng."
+                    )
     
     # ============================================
     # BƯỚC 2: Kiểm tra email tồn tại
