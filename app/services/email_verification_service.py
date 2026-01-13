@@ -102,6 +102,7 @@ class EmailVerificationService:
             )
 
         # 3. Nếu là resend, kiểm tra giới hạn
+        current_resend_count = 0
         if is_resend:
             # Kiểm tra cooldown
             active_verification = self.verification_repo.get_active_by_user_id(user_id)
@@ -114,7 +115,7 @@ class EmailVerificationService:
                         detail=f"Vui lòng đợi {remaining} giây trước khi gửi lại"
                     )
 
-            # Kiểm tra số lần resend
+            # Lấy số lần resend hiện tại trước khi deactivate
             current_resend_count = self.verification_repo.increment_resend_count(user_id)
             if current_resend_count >= MAX_RESEND:
                 raise HTTPException(
@@ -130,9 +131,8 @@ class EmailVerificationService:
         code_hash = self.hash_code(code)
         expires_at = datetime.utcnow() + timedelta(minutes=CODE_EXPIRY_MINUTES)
 
-        # 6. Lấy resend_count từ lần gửi trước (nếu có)
-        previous_resend_count = self.verification_repo.increment_resend_count(user_id)
-        new_resend_count = previous_resend_count + 1 if is_resend else 0
+        # 6. Tính resend_count cho record mới
+        new_resend_count = current_resend_count + 1 if is_resend else 0
 
         # 7. Lưu vào database
         try:
