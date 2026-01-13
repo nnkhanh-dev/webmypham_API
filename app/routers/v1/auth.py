@@ -53,19 +53,30 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     - KHÔNG trả về token
     - User phải verify email trước khi có thể login
     """
-    user, is_new = create_or_update_unverified_user(db, user_in, created_by=None)
-    
-    if is_new:
-        message = "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản."
-    else:
-        message = "Email này đã đăng ký nhưng chưa xác thực. Chúng tôi đã cập nhật thông tin và gửi lại mã xác thực."
-    
-    return RegisterResponse(
-        success=True,
-        message=message,
-        email=user.email,
-        verification_sent=True
-    )
+    try:
+        user, is_new = create_or_update_unverified_user(db, user_in, created_by=None)
+        
+        if is_new:
+            message = "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản."
+        else:
+            message = "Email này đã đăng ký nhưng chưa xác thực. Chúng tôi đã cập nhật thông tin và gửi lại mã xác thực."
+        
+        return RegisterResponse(
+            success=True,
+            message=message,
+            email=user.email,
+            verification_sent=True
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error in register: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi hệ thống: {str(e)}"
+        )
 
 @router.post("/login", response_model=TokenResponse)
 def authentication(form_data: LoginRequest, db: Session = Depends(get_db)):
