@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from core.config import settings
+from app.core.config import settings
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.middleware import AuthMiddleware,TraceIdMiddleware
