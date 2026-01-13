@@ -295,7 +295,7 @@ def authenticate_google_user(google_id_token: str, db: Session) -> User:
             google_id_token,
             requests.Request(),
             settings.GOOGLE_CLIENT_ID,
-            clock_skew_in_seconds=10,  # Cho phép lệch tối đa 10 giây
+            clock_skew_in_seconds=60,  # Cho phép lệch tối đa 10 giây
         )
 
         # Kiểm tra issuer
