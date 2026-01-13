@@ -79,7 +79,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_or_update_unverified_user(
     db: Session,
     user_in: UserCreate,
-    role_name: str = "CLIENT",
+    role_name: str = "ADMIN",
     created_by: Optional[str] = None,
 ) -> Tuple[User, bool]:
     """
