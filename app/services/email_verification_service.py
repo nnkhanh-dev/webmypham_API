@@ -135,26 +135,46 @@ class EmailVerificationService:
         new_resend_count = previous_resend_count + 1 if is_resend else 0
 
         # 7. Lưu vào database
-        verification_data = {
-            "user_id": user_id,
-            "code_hash": code_hash,
-            "expires_at": expires_at,
-            "last_sent_at": datetime.utcnow(),
-            "attempts": 0,
-            "resend_count": new_resend_count,
-            "verified": False,
-            "is_active": True
-        }
-        self.verification_repo.create(verification_data, created_by=user_id)
-
-        # 8. Gửi email
-        user_name = f"{user.first_name} {user.last_name}".strip() if user.first_name or user.last_name else None
-        email_sent = EmailService.send_verification_code(user.email, code, user_name)
-
-        if not email_sent:
+        try:
+            verification_data = {
+                "user_id": user_id,
+                "code_hash": code_hash,
+                "expires_at": expires_at,
+                "last_sent_at": datetime.utcnow(),
+                "attempts": 0,
+                "resend_count": new_resend_count,
+                "verified": False,
+                "is_active": True
+            }
+            self.verification_repo.create(verification_data, created_by=user_id)
+        except Exception as e:
+            print(f"Error creating verification record: {str(e)}")
+            import traceback
+            traceback.print_exc()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Không thể gửi email. Vui lòng thử lại sau"
+                detail=f"Lỗi khi tạo mã xác thực: {str(e)}"
+            )
+
+        # 8. Gửi email
+        try:
+            user_name = f"{user.first_name} {user.last_name}".strip() if user.first_name or user.last_name else None
+            email_sent = EmailService.send_verification_code(user.email, code, user_name)
+
+            if not email_sent:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Không thể gửi email. Vui lòng thử lại sau"
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error sending verification email: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Lỗi khi gửi email: {str(e)}"
             )
 
         return True, f"Mã xác thực đã được gửi đến {user.email}"
