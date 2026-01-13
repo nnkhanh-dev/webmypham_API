@@ -294,8 +294,7 @@ def authenticate_google_user(google_id_token: str, db: Session) -> User:
         idinfo = id_token.verify_oauth2_token(
             google_id_token,
             requests.Request(),
-            settings.GOOGLE_CLIENT_ID,
-            clock_skew_in_seconds=10,  # Cho phép lệch tối đa 10 giây
+            settings.GOOGLE_CLIENT_ID
         )
 
         # Kiểm tra issuer
