@@ -41,16 +41,6 @@ class ProductRepository(BaseRepository[Product]):
             joinedload(Product.product_types)
         )
         
-        # Chỉ lấy sản phẩm có ít nhất 1 product type
-        from sqlalchemy import select, and_
-        has_product_type = select(ProductType.id).where(
-            and_(
-                ProductType.product_id == Product.id,
-                ProductType.deleted_at.is_(None)
-            )
-        ).correlate(Product).exists()
-        query = query.filter(has_product_type)
-        
         # Filter by is_active
         if is_active is not None:
             query = query.filter(Product.is_active == is_active)
