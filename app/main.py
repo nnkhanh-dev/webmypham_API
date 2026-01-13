@@ -67,7 +67,7 @@ app.add_middleware(TraceIdMiddleware)
 # 3. CORS middleware (executes first - MUST BE LAST ADDED)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
