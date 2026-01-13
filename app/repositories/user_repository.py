@@ -21,6 +21,10 @@ class UserRepository(BaseRepository[User]):
             )
         ).first()
     
+    def get_by_email_include_deleted(self, email: str) -> Optional[User]:
+        """Lấy user theo email (bao gồm cả deleted)"""
+        return self.db.query(User).filter(User.email == email).first()
+    
     def get_by_phone(self, phone_number: str) -> Optional[User]:
         """Lấy user theo số điện thoại (không bao gồm deleted)"""
         return self.db.query(User).filter(
@@ -29,6 +33,10 @@ class UserRepository(BaseRepository[User]):
                 User.deleted_at.is_(None)
             )
         ).first()
+    
+    def get_by_phone_include_deleted(self, phone_number: str) -> Optional[User]:
+        """Lấy user theo số điện thoại (bao gồm cả deleted)"""
+        return self.db.query(User).filter(User.phone_number == phone_number).first()
     
     def get_with_roles(self, user_id: str) -> Optional[User]:
         """Lấy user kèm roles"""

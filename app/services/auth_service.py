@@ -85,89 +85,143 @@ def create_or_update_unverified_user(
     """
     Tạo user mới hoặc cập nhật user chưa verify email.
     
+    Business Rules:
+    1. Email đã verified -> Không cho đăng ký lại
+    2. Email chưa verified -> Cho phép cập nhật thông tin
+    3. Email đã bị xóa -> Cho phép restore và cập nhật
+    4. Phone number phải unique (kể cả đã xóa)
+    
     Returns:
-        Tuple[User, is_new_user]: User object và flag cho biết là user mới hay update
+        Tuple[User, is_new_user]: User object và flag cho biết là user mới (True) hay update (False)
     
     Raises:
-        HTTPException: Nếu email đã được đăng ký và verified
+        HTTPException: 
+            - Email đã được verify
+            - Phone number đã tồn tại
     """
     user_repo = UserRepository(db)
     role_repo = RoleRepository(db)
-
-    # Kiểm tra email đã tồn tại chưa
-    existing_user = user_repo.get_by_email(user_in.email)
     
-    if existing_user:
-        # Email đã tồn tại và đã verified -> không cho đăng ký lại
-        if existing_user.email_confirmed:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập."
-            )
-        
-        # Kiểm tra phone number trùng với user khác (không phải chính user này)
-        if user_in.phone_number:
-            phone_user = user_repo.get_by_phone(user_in.phone_number)
-            if phone_user and phone_user.id != existing_user.id:
+    # ============================================
+    # BƯỚC 1: Validate phone number uniqueness
+    # ============================================
+    if user_in.phone_number:
+        phone_owner = user_repo.get_by_phone_include_deleted(user_in.phone_number)
+        if phone_owner:
+            # Cho phép nếu là chính user đang update (sẽ check ở bước sau)
+            # Không cho phép nếu phone thuộc về user khác
+            existing_user = user_repo.get_by_email_include_deleted(user_in.email)
+            if not existing_user or phone_owner.id != existing_user.id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Số điện thoại này đã được sử dụng bởi tài khoản khác."
+                    detail="Số điện thoại này đã được sử dụng."
                 )
-        
-        # Email tồn tại nhưng chưa verified -> cập nhật thông tin
-        hashed = pwd_context.hash(user_in.password)
-        existing_user.password_hash = hashed
-        existing_user.first_name = user_in.first_name
-        existing_user.last_name = user_in.last_name
-        existing_user.phone_number = user_in.phone_number
-        # email_confirmed vẫn giữ nguyên là False
-        
-        db.add(existing_user)
-        db.commit()
-        db.refresh(existing_user)
-        
-        # Gửi lại mã xác thực
-        try:
-            verification_service = EmailVerificationService(db)
-            verification_service.send_verification_code(existing_user.id, is_resend=True)
-        except Exception as e:
-            print(f"Warning: Failed to send verification email: {str(e)}")
-        
-        return existing_user, False  # Không phải user mới
     
-    # Kiểm tra phone number đã tồn tại chưa (cho user mới)
-    if user_in.phone_number:
-        phone_user = user_repo.get_by_phone(user_in.phone_number)
-        if phone_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Số điện thoại này đã được sử dụng. Vui lòng sử dụng số khác."
-            )
+    # ============================================
+    # BƯỚC 2: Kiểm tra email tồn tại
+    # ============================================
+    existing_user = user_repo.get_by_email_include_deleted(user_in.email)
     
-    # Email chưa tồn tại -> tạo mới
-    hashed = pwd_context.hash(user_in.password)
+    # CASE 1: Email chưa tồn tại -> Tạo mới
+    if not existing_user:
+        return _create_new_user(db, user_in, role_name, created_by)
+    
+    # CASE 2: Email đã verified -> Không cho đăng ký lại
+    if existing_user.email_confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập."
+        )
+    
+    # CASE 3: Email đã bị soft delete -> Restore
+    if existing_user.deleted_at is not None:
+        return _restore_deleted_user(db, existing_user, user_in)
+    
+    # CASE 4: Email chưa verified -> Update thông tin
+    return _update_unverified_user(db, existing_user, user_in)
+
+
+def _create_new_user(
+    db: Session,
+    user_in: UserCreate,
+    role_name: str,
+    created_by: Optional[str]
+) -> Tuple[User, bool]:
+    """Tạo user mới hoàn toàn"""
+    user_repo = UserRepository(db)
+    role_repo = RoleRepository(db)
+    
     user_data = {
         "email": user_in.email,
-        "password_hash": hashed,
+        "password_hash": pwd_context.hash(user_in.password),
         "first_name": user_in.first_name,
         "last_name": user_in.last_name,
         "phone_number": user_in.phone_number,
-        "email_confirmed": False,  # Mặc định chưa xác thực email
+        "email_confirmed": False,
     }
+    
     user = user_repo.create(user_data, created_by=created_by)
     role = role_repo.get_or_create(role_name, created_by=created_by)
     user = user_repo.assign_role(user, role.name)
+    
+    _send_verification_email(db, user.id, is_resend=False)
+    
+    return user, True
 
-    # Gửi mã xác thực email
+
+def _restore_deleted_user(
+    db: Session,
+    user: User,
+    user_in: UserCreate
+) -> Tuple[User, bool]:
+    """Restore user đã bị soft delete"""
+    user.deleted_at = None
+    user.deleted_by = None
+    user.password_hash = pwd_context.hash(user_in.password)
+    user.first_name = user_in.first_name
+    user.last_name = user_in.last_name
+    user.phone_number = user_in.phone_number
+    user.email_confirmed = False
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    _send_verification_email(db, user.id, is_resend=False)
+    
+    return user, True  # Coi như user mới
+
+
+def _update_unverified_user(
+    db: Session,
+    user: User,
+    user_in: UserCreate
+) -> Tuple[User, bool]:
+    """Update thông tin user chưa verified"""
+    user.password_hash = pwd_context.hash(user_in.password)
+    user.first_name = user_in.first_name
+    user.last_name = user_in.last_name
+    user.phone_number = user_in.phone_number
+    # email_confirmed vẫn giữ nguyên False
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    _send_verification_email(db, user.id, is_resend=True)
+    
+    return user, False  # Không phải user mới
+
+
+def _send_verification_email(db: Session, user_id: int, is_resend: bool) -> None:
+    """Helper function để gửi email verification"""
     try:
         verification_service = EmailVerificationService(db)
-        verification_service.send_verification_code(user.id, is_resend=False)
+        verification_service.send_verification_code(user_id, is_resend=is_resend)
     except Exception as e:
         # Log error nhưng không fail registration
         print(f"Warning: Failed to send verification email: {str(e)}")
-
-    return user, True  # User mới
-
+        # TODO: Add proper logging here
 
 def create_user(
     db: Session,
